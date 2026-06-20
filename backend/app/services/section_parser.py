@@ -154,7 +154,7 @@ def parse_experience(text):
             non_empty_lines.append(line.strip())
 
     current_entry = None
-    company_name = None
+    used_lines = set()  # Track which lines have been consumed as title/company
 
     date_pattern = r"(?i)(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}|\d{1,2}/\d{4}|\d{4})\s*[-–—to]+\s*(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}|\d{1,2}/\d{4}|\d{4}|present|current)"
 
@@ -169,17 +169,37 @@ def parse_experience(text):
 
             # Get the title — could be on this line or the previous line
             title_part = re.sub(date_pattern, "", stripped).strip(" -–—|,")
+            company_part = None
 
-            # If the date was on its own line, the title is the previous line
+            # If the date was on its own line, look back for title and company
             if not title_part and i > 0:
                 prev = non_empty_lines[i - 1]
-                # Only use previous line if it's not a bullet point or a company we already captured
-                if not prev.startswith(("•", "-", "*", "·")):
+                if not prev.startswith(("•", "-", "*", "·")) and i - 1 not in used_lines:
                     title_part = prev
+                    used_lines.add(i - 1)
+
+                    # Look one more line back for the company
+                    if i > 1:
+                        prev2 = non_empty_lines[i - 2]
+                        if not prev2.startswith(("•", "-", "*", "·")) and i - 2 not in used_lines:
+                            # Validate it looks like a company name, not a description
+                            # Company lines: short, contain org markers, start with uppercase
+                            first_char_upper = prev2[0].isupper() if prev2 else False
+                            has_org_marker = any(m in prev2 for m in [" Ltd", " LTD", " Inc", " Corp", " LLC", " Company", " Technologies", " Solutions", " Group", " Pvt"])
+                            has_location = "," in prev2 and len(prev2.split(",")[-1].strip()) < 20
+                            is_short = len(prev2) < 50
+
+                            if first_char_upper and is_short and (has_org_marker or has_location):
+                                company_part = prev2
+                                used_lines.add(i - 2)
+
+            # If no company found, inherit from the previous entry (same company, different role)
+            if not company_part and entries:
+                company_part = entries[-1].get("company")
 
             current_entry = {
                 "job_title": title_part if title_part else None,
-                "company": company_name,
+                "company": company_part,
                 "start_date": date_match.group(1).strip(),
                 "end_date": date_match.group(2).strip(),
                 "duration_months": None,
@@ -192,12 +212,9 @@ def parse_experience(text):
                 if desc_line:
                     current_entry["description"] += desc_line + " "
             else:
-                # Could be a continuation of description
+                # Could be a company name for the next entry, or description continuation
+                # Don't consume it here — let the date handler look back for it
                 current_entry["description"] += stripped + " "
-        else:
-            # Lines before the first date — first one is usually the company name
-            if not company_name and len(stripped) < 60 and not stripped.startswith(("•", "-", "*", "·")):
-                company_name = stripped
 
     # Save last entry
     if current_entry:
