@@ -104,9 +104,12 @@ def run_nlp_pipeline(raw_text, parsed_data):
         {
             "extracted_skills": [...],
             "entities": [...],
-            "embedding": []  # placeholder for BERT — Phase 3 task 6
+            "embedding": [384-dim vector],
+            "experience_embeddings": [{role, embedding}, ...]
         }
     """
+    from app.services.embedding import generate_embedding, generate_embeddings_batch
+
     # Step 1: Extract named entities with spaCy
     entities = extract_entities(raw_text)
 
@@ -114,8 +117,32 @@ def run_nlp_pipeline(raw_text, parsed_data):
     parsed_skills = parsed_data.get("skills", [])
     extracted_skills = extract_skills_with_confidence(raw_text, parsed_skills)
 
+    # Step 3: Generate BERT embeddings
+    # 3a: Overall CV embedding — captures the candidate's general profile
+    summary_text = parsed_data.get("summary") or ""
+    skills_text = ", ".join(parsed_skills)
+    profile_text = f"{summary_text} Skills: {skills_text}"
+    profile_embedding = generate_embedding(profile_text)
+
+    # 3b: Per-experience embeddings — captures what they did in each role
+    experience_embeddings = []
+    experience_texts = []
+    for exp in parsed_data.get("experience", []):
+        role_text = f"{exp.get('job_title', '')} at {exp.get('company', '')}. {exp.get('description', '')}"
+        experience_texts.append(role_text)
+
+    if experience_texts:
+        exp_vectors = generate_embeddings_batch(experience_texts)
+        for i, exp in enumerate(parsed_data.get("experience", [])):
+            experience_embeddings.append({
+                "role": exp.get("job_title", "Unknown"),
+                "company": exp.get("company", "Unknown"),
+                "embedding": exp_vectors[i],
+            })
+
     return {
         "extracted_skills": extracted_skills,
         "entities": entities,
-        "embedding": [],  # Will be populated by BERT in the next step
+        "embedding": profile_embedding,
+        "experience_embeddings": experience_embeddings,
     }
