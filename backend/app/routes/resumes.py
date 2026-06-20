@@ -17,6 +17,7 @@ from app.config import Config
 from app.models.resume import create_resume_doc
 from app.services.parser import extract_text
 from app.services.section_parser import parse_cv
+from app.services.nlp_extractor import run_nlp_pipeline
 
 resumes_bp = Blueprint("resumes", __name__)
 
@@ -60,13 +61,17 @@ def process_resume(resume_id, file_path, file_format):
         # Step 2: Parse the raw text into structured sections
         parsed_data = parse_cv(raw_text)
 
-        # Step 3: Update the resume document with extracted data
+        # Step 3: Run NLP pipeline (entity recognition + skill extraction)
+        nlp_data = run_nlp_pipeline(raw_text, parsed_data)
+
+        # Step 4: Update the resume document with all extracted data
         db.resumes.update_one(
             {"_id": ObjectId(resume_id)},
             {"$set": {
                 "status": "parsed",
                 "raw_text": raw_text,
                 "parsed_data": parsed_data,
+                "nlp_data": nlp_data,
             }}
         )
 

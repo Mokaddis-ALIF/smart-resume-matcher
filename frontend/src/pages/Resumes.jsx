@@ -240,16 +240,77 @@ export default function Resumes() {
                   </Section>
                 )}
 
-                {/* Skills */}
-                <Section title="Skills">
-                  {selectedResume.parsed_data?.skills?.length > 0 ? (
+                {/* Skills — NLP Enhanced */}
+                <Section title="Skills (NLP Extracted)">
+                  {selectedResume.nlp_data?.extracted_skills?.length > 0 ? (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {selectedResume.parsed_data.skills.map((skill, i) => (
-                        <span key={i} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 12, background: "#eef2ff", color: "#4338ca" }}>{skill}</span>
-                      ))}
+                      {selectedResume.nlp_data.extracted_skills.map((s, i) => {
+                        const catColors = {
+                          language: { bg: "#eef2ff", text: "#4338ca" },
+                          framework: { bg: "#f0fdf4", text: "#166534" },
+                          database: { bg: "#fef3c7", text: "#92400e" },
+                          cloud: { bg: "#eff6ff", text: "#1e40af" },
+                          devops: { bg: "#fce7f3", text: "#9d174d" },
+                          tool: { bg: "#f3f4f6", text: "#374151" },
+                          ml: { bg: "#faf5ff", text: "#7c3aed" },
+                          mobile: { bg: "#ecfdf5", text: "#047857" },
+                          testing: { bg: "#fff7ed", text: "#c2410c" },
+                          methodology: { bg: "#f0f9ff", text: "#0369a1" },
+                          messaging: { bg: "#fdf2f8", text: "#be185d" },
+                          unknown: { bg: "#f9fafb", text: "#6b7280" },
+                        };
+                        const colors = catColors[s.category] || catColors.unknown;
+                        return (
+                          <span key={i} style={{
+                            fontSize: 11, padding: "4px 10px", borderRadius: 12,
+                            background: colors.bg, color: colors.text,
+                            display: "flex", alignItems: "center", gap: 4,
+                          }}>
+                            {s.skill}
+                            <span style={{ fontSize: 9, opacity: 0.7 }}>{Math.round(s.confidence * 100)}%</span>
+                          </span>
+                        );
+                      })}
                     </div>
-                  ) : <Empty />}
+                  ) : (
+                    /* Fallback to parsed skills if NLP hasn't run */
+                    selectedResume.parsed_data?.skills?.length > 0 ? (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {selectedResume.parsed_data.skills.map((skill, i) => (
+                          <span key={i} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 12, background: "#eef2ff", color: "#4338ca" }}>{skill}</span>
+                        ))}
+                      </div>
+                    ) : <Empty />
+                  )}
                 </Section>
+
+                {/* Named Entities — spaCy NER */}
+                {selectedResume.nlp_data?.entities?.length > 0 && (
+                  <Section title="Named Entities (spaCy NER)">
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {selectedResume.nlp_data.entities.map((ent, i) => {
+                        const labelColors = {
+                          PERSON: { bg: "#dbeafe", text: "#1e40af" },
+                          ORG: { bg: "#dcfce7", text: "#166534" },
+                          GPE: { bg: "#fef9c3", text: "#854d0e" },
+                          DATE: { bg: "#f3e8ff", text: "#7c3aed" },
+                          PRODUCT: { bg: "#ffe4e6", text: "#be123c" },
+                        };
+                        const colors = labelColors[ent.label] || { bg: "#f3f4f6", text: "#6b7280" };
+                        return (
+                          <span key={i} style={{
+                            fontSize: 11, padding: "3px 8px", borderRadius: 6,
+                            background: colors.bg, color: colors.text,
+                            display: "flex", alignItems: "center", gap: 4,
+                          }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.6 }}>{ent.label}</span>
+                            {ent.text}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </Section>
+                )}
 
                 {/* Experience */}
                 <Section title="Experience">
