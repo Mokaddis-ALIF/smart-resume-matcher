@@ -99,3 +99,13 @@ export function deleteResume(resumeId) {
 export function getExtractedData(resumeId) {
   return request(`/resumes/${resumeId}/extracted`);
 }
+
+// ─── Evaluation ───
+
+export function trainModels() {
+  return request("/evaluation/train", { method: "POST" });
+}
+
+export function getEvaluationResults() {
+  return request("/evaluation/results");
+}

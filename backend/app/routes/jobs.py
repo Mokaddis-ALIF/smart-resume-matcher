@@ -13,6 +13,8 @@ from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from app import db
 from app.models.job import create_job_doc
+from app.models.match_result import create_match_result_doc
+from app.services.matcher import match_resume_to_job
 
 jobs_bp = Blueprint("jobs", __name__)
 
@@ -126,7 +128,7 @@ def delete_job(job_id):
 @jobs_bp.route("/api/jobs/<job_id>/match", methods=["POST"])
 def trigger_matching(job_id):
     """Trigger matching for all uploaded CVs against this job.
-    This will be implemented in Phase 4 — for now returns a placeholder.
+    Scores each resume, stores results, and returns a summary.
     """
     try:
         job = db.jobs.find_one({"_id": ObjectId(job_id)})
@@ -136,15 +138,61 @@ def trigger_matching(job_id):
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
-    resume_count = db.resumes.count_documents({"job_id": job_id})
-    if resume_count == 0:
+    resumes = list(db.resumes.find({"job_id": job_id}))
+    if len(resumes) == 0:
         return jsonify({"error": "No resumes uploaded for this job"}), 400
 
-    # TODO: Phase 4 — implement actual matching logic
+    # Clear previous match results for this job
+    db.match_results.delete_many({"job_id": job_id})
+
+    results = []
+    for resume in resumes:
+        # Only match parsed resumes
+        if resume.get("status") != "parsed":
+            continue
+
+        # Run the matching engine
+        match = match_resume_to_job(resume, job)
+
+        # Store the result in MongoDB
+        result_doc = create_match_result_doc(
+            job_id=job_id,
+            resume_id=str(resume["_id"]),
+            overall_score=match["overall_score"],
+            score_breakdown=match["score_breakdown"],
+            explanation=match["explanation"],
+        )
+        result_doc["ml_predictions"] = match.get("ml_predictions", {})
+        db.match_results.insert_one(result_doc)
+
+        results.append({
+            "resume_id": str(resume["_id"]),
+            "filename": resume["filename"],
+            "candidate_name": resume.get("parsed_data", {}).get("name", "Unknown"),
+            "overall_score": match["overall_score"],
+            "category": match["category"],
+        })
+
+    # Update matched count on the job
+    db.jobs.update_one(
+        {"_id": ObjectId(job_id)},
+        {"$set": {"matched_count": len(results)}}
+    )
+
+    # Sort by score descending
+    results.sort(key=lambda x: x["overall_score"], reverse=True)
+
+    # Summary
+    summary = {
+        "highly_qualified": len([r for r in results if r["category"] == "highly_qualified"]),
+        "qualified": len([r for r in results if r["category"] == "qualified"]),
+        "not_qualified": len([r for r in results if r["category"] == "not_qualified"]),
+    }
+
     return jsonify({
-        "message": "Matching triggered",
-        "job_id": job_id,
-        "resumes_to_process": resume_count,
+        "message": f"Matching complete — {len(results)} resumes scored",
+        "results": results,
+        "summary": summary,
     })
 
 

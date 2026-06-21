@@ -19,6 +19,13 @@ def extract_text_from_pdf(file_path):
     except Exception as e:
         raise Exception(f"Failed to extract text from PDF: {str(e)}")
 
+    # If no text was extracted, the PDF is likely image-based
+    if len(text.strip()) < 50:
+        raise Exception(
+            "This PDF appears to be image-based (no selectable text). "
+            "Please upload a text-based PDF created from Word, Google Docs, or similar."
+        )
+
     return text.strip()
 
 
