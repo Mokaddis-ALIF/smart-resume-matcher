@@ -5,8 +5,8 @@
       "precision": 67.35,
       "recall": 66.4,
       "f1_score": 65.65,
-      "train_time_seconds": 123.656,
-      "predict_time_seconds": 3.856,
+      "train_time_seconds": 129.335,
+      "predict_time_seconds": 4.08,
       "cv_mean_accuracy": 66.13,
       "cv_std": 4.01,
       "confusion_matrix": [
@@ -787,8 +787,8 @@
       "precision": 75.28,
       "recall": 74.45,
       "f1_score": 72.04,
-      "train_time_seconds": 8.021,
-      "predict_time_seconds": 0.104,
+      "train_time_seconds": 7.775,
+      "predict_time_seconds": 0.116,
       "cv_mean_accuracy": 72.93,
       "cv_std": 4.46,
       "confusion_matrix": [
@@ -1569,8 +1569,8 @@
       "precision": 60.2,
       "recall": 57.75,
       "f1_score": 57.31,
-      "train_time_seconds": 0.006,
-      "predict_time_seconds": 0.149,
+      "train_time_seconds": 0.011,
+      "predict_time_seconds": 0.184,
       "cv_mean_accuracy": 53.8,
       "cv_std": 3.72,
       "confusion_matrix": [
@@ -2351,8 +2351,8 @@
       "precision": 63.08,
       "recall": 56.54,
       "f1_score": 52.92,
-      "train_time_seconds": 0.033,
-      "predict_time_seconds": 0.005,
+      "train_time_seconds": 0.053,
+      "predict_time_seconds": 0.011,
       "cv_mean_accuracy": 55.9,
       "cv_std": 3.25,
       "confusion_matrix": [
