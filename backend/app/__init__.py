@@ -15,6 +15,7 @@ def create_app():
 
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config["MAX_CONTENT_LENGTH"] = Config.MAX_CONTENT_LENGTH
 
     # Enable CORS so the React frontend can call the API
     CORS(app)
@@ -31,10 +32,29 @@ def create_app():
     from app.routes.jobs import jobs_bp
     from app.routes.resumes import resumes_bp
     from app.routes.evaluation import evaluation_bp
+    from app.routes.docs import docs_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(resumes_bp)
     app.register_blueprint(evaluation_bp)
+    app.register_blueprint(docs_bp)
+
+    # Global error handlers
+    @app.errorhandler(404)
+    def not_found(e):
+        return {"error": "Endpoint not found"}, 404
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        return {"error": "Method not allowed"}, 405
+
+    @app.errorhandler(413)
+    def file_too_large(e):
+        return {"error": "File too large. Maximum size is 16MB."}, 413
+
+    @app.errorhandler(500)
+    def internal_error(e):
+        return {"error": "Internal server error"}, 500
 
     return app

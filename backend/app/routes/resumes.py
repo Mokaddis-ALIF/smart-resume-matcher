@@ -36,6 +36,16 @@ def save_file(file):
     unique_name = f"{uuid.uuid4().hex}_{original}"
     file_path = os.path.join(Config.UPLOAD_FOLDER, unique_name)
     file.save(file_path)
+
+    # Check for empty or corrupted files
+    file_size = os.path.getsize(file_path)
+    if file_size == 0:
+        os.remove(file_path)
+        raise ValueError("Uploaded file is empty (0 bytes)")
+    if file_size < 100:
+        os.remove(file_path)
+        raise ValueError("Uploaded file is too small to be a valid CV")
+
     return original, extension, file_path
 
 
@@ -107,7 +117,11 @@ def upload_resume(job_id):
     if not allowed_file(file.filename):
         return jsonify({"error": f"File type not allowed. Accepted: {', '.join(ALLOWED_EXTENSIONS)}"}), 400
 
-    filename, file_format, file_path = save_file(file)
+    try:
+        filename, file_format, file_path = save_file(file)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     resume = create_resume_doc(
         job_id=job_id,
         filename=filename,
@@ -159,7 +173,12 @@ def upload_resumes_bulk(job_id):
             errors.append({"filename": file.filename, "error": "File type not allowed"})
             continue
 
-        filename, file_format, file_path = save_file(file)
+        try:
+            filename, file_format, file_path = save_file(file)
+        except ValueError as e:
+            errors.append({"filename": file.filename, "error": str(e)})
+            continue
+
         resume = create_resume_doc(
             job_id=job_id,
             filename=filename,
