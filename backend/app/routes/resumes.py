@@ -10,7 +10,7 @@ GET    /api/resumes/<id>/extracted             → Get NLP-extracted data for a 
 """
 import os
 import uuid
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from bson import ObjectId
 from app import db
 from app.config import Config
@@ -284,3 +284,33 @@ def get_extracted_data(resume_id):
         "parsed_data": resume["parsed_data"],
         "nlp_data": resume["nlp_data"],
     })
+
+
+@resumes_bp.route("/api/resumes/<resume_id>/file", methods=["GET"])
+def serve_resume_file(resume_id):
+    """Serve the original uploaded resume file for viewing."""
+    try:
+        resume = db.resumes.find_one({"_id": ObjectId(resume_id)})
+    except Exception:
+        return jsonify({"error": "Invalid resume ID"}), 400
+
+    if not resume:
+        return jsonify({"error": "Resume not found"}), 404
+
+    file_path = resume.get("file_path", "")
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({"error": "File not found on disk"}), 404
+
+    # Determine MIME type
+    ext = resume.get("file_format", "pdf").lower()
+    mime_types = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "doc": "application/msword",
+    }
+
+    return send_file(
+        os.path.abspath(file_path),
+        mimetype=mime_types.get(ext, "application/octet-stream"),
+        download_name=resume.get("filename", "resume"),
+    )

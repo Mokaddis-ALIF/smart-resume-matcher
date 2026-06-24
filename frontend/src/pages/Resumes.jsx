@@ -10,6 +10,7 @@ export default function Resumes() {
   const [selectedJobId, setSelectedJobId] = useState(jobIdFromUrl || "");
   const [resumes, setResumes] = useState([]);
   const [selectedResume, setSelectedResume] = useState(null);
+  const [viewingPdf, setViewingPdf] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -196,8 +197,18 @@ export default function Resumes() {
                           {resume.parsed_data?.name || "Name not extracted"}
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                         {statusBadge(resume.status)}
+                        <button
+                          style={{
+                            fontSize: 11, padding: "4px 10px", borderRadius: 6,
+                            border: "1px solid #c7d2fe", background: "#eef2ff",
+                            color: "#4338ca", cursor: "pointer", fontWeight: 500,
+                          }}
+                          onClick={e => { e.stopPropagation(); setViewingPdf(resume); }}
+                        >
+                          👁 View
+                        </button>
                         <button
                           className="btn btn-danger"
                           style={{ fontSize: 11, padding: "4px 10px" }}
@@ -361,6 +372,91 @@ export default function Resumes() {
             )}
           </div>
         </>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {viewingPdf && (
+        <div
+          style={{
+            position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+            background: "rgba(0, 0, 0, 0.6)", zIndex: 1000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setViewingPdf(null)}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: 12, width: "80%", height: "90vh",
+              display: "flex", flexDirection: "column", overflow: "hidden",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "14px 20px", borderBottom: "1px solid #e5e7eb",
+            }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{viewingPdf.filename}</div>
+                <div style={{ fontSize: 12, color: "#9ca3af" }}>
+                  {viewingPdf.parsed_data?.name || "Unknown candidate"}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <a
+                  href={`http://localhost:5000/api/resumes/${viewingPdf._id}/file`}
+                  download={viewingPdf.filename}
+                  style={{
+                    fontSize: 12, padding: "6px 14px", borderRadius: 6,
+                    border: "1px solid #d1d5db", background: "#fff",
+                    color: "#374151", textDecoration: "none", fontWeight: 500,
+                  }}
+                >
+                  ⬇ Download
+                </a>
+                <button
+                  onClick={() => setViewingPdf(null)}
+                  style={{
+                    fontSize: 16, padding: "4px 12px", borderRadius: 6,
+                    border: "1px solid #d1d5db", background: "#fff",
+                    color: "#6b7280", cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* PDF embed */}
+            <div style={{ flex: 1, background: "#525659" }}>
+              {viewingPdf.file_format === "pdf" ? (
+                <iframe
+                  src={`http://localhost:5000/api/resumes/${viewingPdf._id}/file`}
+                  style={{ width: "100%", height: "100%", border: "none" }}
+                  title="Resume PDF"
+                />
+              ) : (
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  height: "100%", color: "#fff", flexDirection: "column", gap: 12,
+                }}>
+                  <div style={{ fontSize: 48 }}>📄</div>
+                  <p style={{ fontSize: 14 }}>Preview not available for {viewingPdf.file_format?.toUpperCase()} files</p>
+                  <a
+                    href={`http://localhost:5000/api/resumes/${viewingPdf._id}/file`}
+                    download={viewingPdf.filename}
+                    style={{
+                      padding: "8px 20px", borderRadius: 8, background: "#4f46e5",
+                      color: "#fff", textDecoration: "none", fontSize: 14, fontWeight: 500,
+                    }}
+                  >
+                    Download to view
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
