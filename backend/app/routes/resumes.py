@@ -64,7 +64,7 @@ def process_resume(resume_id, file_path, file_format):
         if not raw_text or len(raw_text.strip()) < 10:
             db.resumes.update_one(
                 {"_id": ObjectId(resume_id)},
-                {"$set": {"status": "failed", "raw_text": raw_text or ""}}
+                {"$set": {"status": "failed", "raw_text": raw_text or "", "error_message": "Could not extract meaningful text from the file"}}
             )
             return False, "Could not extract meaningful text from the file"
 
@@ -82,6 +82,7 @@ def process_resume(resume_id, file_path, file_format):
                 "raw_text": raw_text,
                 "parsed_data": parsed_data,
                 "nlp_data": nlp_data,
+                "error_message": None,
             }}
         )
 
@@ -90,7 +91,7 @@ def process_resume(resume_id, file_path, file_format):
     except Exception as e:
         db.resumes.update_one(
             {"_id": ObjectId(resume_id)},
-            {"$set": {"status": "failed"}}
+            {"$set": {"status": "failed", "error_message": str(e)}}
         )
         return False, str(e)
 
@@ -262,6 +263,31 @@ def delete_resume(resume_id):
     db.resumes.delete_one({"_id": ObjectId(resume_id)})
 
     return jsonify({"message": "Resume deleted"})
+
+
+@resumes_bp.route("/api/resumes/delete/bulk", methods=["POST"])
+def delete_resumes_bulk():
+    """Delete multiple resumes and their match results."""
+    data = request.get_json()
+    resume_ids = data.get("resume_ids", [])
+
+    if not resume_ids:
+        return jsonify({"error": "No resume IDs provided"}), 400
+
+    deleted_count = 0
+    for resume_id in resume_ids:
+        try:
+            resume = db.resumes.find_one({"_id": ObjectId(resume_id)})
+            if resume:
+                db.match_results.delete_many({"resume_id": resume_id})
+                if os.path.exists(resume.get("file_path", "")):
+                    os.remove(resume["file_path"])
+                db.resumes.delete_one({"_id": ObjectId(resume_id)})
+                deleted_count += 1
+        except Exception:
+            continue
+
+    return jsonify({"message": f"{deleted_count} resume(s) deleted", "deleted_count": deleted_count})
 
 
 @resumes_bp.route("/api/resumes/<resume_id>/extracted", methods=["GET"])

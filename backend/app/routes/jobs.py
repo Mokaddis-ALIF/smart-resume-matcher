@@ -9,6 +9,7 @@ DELETE /api/jobs/<id>           → Delete a job posting
 POST   /api/jobs/<id>/match    → Trigger matching for all CVs against this job
 GET    /api/jobs/<id>/results  → Get all match results for this job
 """
+import os
 from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from app import db
@@ -100,10 +101,26 @@ def update_job(job_id):
 
     db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": updates})
 
+    # Delete all associated resumes and match results since job requirements changed
+    # HR user will need to re-upload CVs and re-run matching
+    resumes = list(db.resumes.find({"job_id": job_id}))
+    for resume in resumes:
+        file_path = resume.get("file_path", "")
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
+
+    resumes_deleted = db.resumes.delete_many({"job_id": job_id})
+    results_deleted = db.match_results.delete_many({"job_id": job_id})
+
     updated_job = db.jobs.find_one({"_id": ObjectId(job_id)})
     updated_job["_id"] = str(updated_job["_id"])
 
-    return jsonify({"message": "Job updated", "job": updated_job})
+    return jsonify({
+        "message": "Job updated. All previous resumes and match results have been cleared.",
+        "job": updated_job,
+        "resumes_cleared": resumes_deleted.deleted_count,
+        "match_results_cleared": results_deleted.deleted_count,
+    })
 
 
 @jobs_bp.route("/api/jobs/<job_id>", methods=["DELETE"])

@@ -9,14 +9,14 @@ import re
 
 # Section header patterns — these match common CV section headings
 SECTION_PATTERNS = {
-    "summary": r"(?i)^(summary|profile|about\s*me|objective|personal\s*statement|career\s*summary|professional\s*summary)\s*$",
-    "experience": r"(?i)^(experience|employment|work\s*history|professional\s*experience|career\s*history|work\s*experience)\s*$",
-    "education": r"(?i)^(education|academic|qualifications?|degrees?|certifications?)\s*$",
-    "skills": r"(?i)^(skills|technical\s*skills|core\s*competencies|key\s*skills)\s*$",
-    "projects": r"(?i)^(projects?|personal\s*projects?|key\s*projects?|academic\s*projects?)\s*$",
-    "achievements": r"(?i)^(key\s*achievements?|achievements?|accomplishments?)\s*$",
-    "languages": r"(?i)^(language\s*proficiency|languages?|language\s*skills?)\s*$",
-    "other": r"(?i)^(hobbies|interests|references|additional\s*information|extracurricular|volunteer|awards?)\s*$",
+    "summary": r"(?i)^(summary|profile|about\s*me|objective|personal\s*statement|career\s*summary|professional\s*summary)\s*:?\s*$",
+    "experience": r"(?i)^(experience|employment|work\s*history|professional\s*experience|career\s*history|work\s*experience)\s*:?\s*$",
+    "education": r"(?i)^(education|academic|qualifications?|degrees?|certifications?)\s*:?\s*$",
+    "skills": r"(?i)^(skills|technical\s*skills|core\s*competencies|core\s*skills|key\s*skills)\s*:?\s*$",
+    "projects": r"(?i)^(projects?|personal\s*projects?|key\s*projects?|academic\s*projects?|remarkable\s*projects?)\s*:?\s*$",
+    "achievements": r"(?i)^(key\s*achievements?|achievements?|accomplishments?)\s*:?\s*$",
+    "languages": r"(?i)^(language\s*proficiency|languages?|language\s*skills?)\s*:?\s*$",
+    "other": r"(?i)^(hobbies|interests|references|additional\s*information|extracurricular|volunteer|awards?)\s*:?\s*$",
 }
 
 # Patterns for extracting contact information
@@ -142,7 +142,13 @@ def split_into_sections(text):
 
 
 def parse_experience(text):
-    """Parse experience section into structured entries."""
+    """Parse experience section into structured entries.
+    
+    Handles multiple CV formats:
+    - Format A: Company → Title → Date (title before date)
+    - Format B: Company → Date → Title (title after date)
+    - Format C: Title — Company — Date (all on one line)
+    """
     entries = []
     if not text:
         return entries
@@ -154,46 +160,75 @@ def parse_experience(text):
             non_empty_lines.append(line.strip())
 
     current_entry = None
-    used_lines = set()  # Track which lines have been consumed as title/company
+    used_lines = set()
 
     date_pattern = r"(?i)(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}|\d{1,2}/\d{4}|\d{4})\s*[-–—to]+\s*(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}|\d{1,2}/\d{4}|\d{4}|present|current)"
 
+    def _looks_like_company(line):
+        """Check if a line looks like a company name."""
+        if not line or len(line) > 60:
+            return False
+        if line.startswith(("•", "-", "*", "·")):
+            return False
+        has_org_marker = any(m in line for m in [" Ltd", " LTD", " Inc", " Corp", " LLC", " Company", " Technologies", " Solutions", " Group", " Pvt", " Soft.", " Labs"])
+        has_location = "," in line and len(line.split(",")[-1].strip()) < 20
+        return line[0].isupper() and (has_org_marker or has_location)
+
+    def _looks_like_title(line):
+        """Check if a line looks like a job title."""
+        if not line or len(line) > 80:
+            return False
+        if line.startswith(("•", "-", "*", "·")):
+            return False
+        title_keywords = ["engineer", "developer", "manager", "analyst", "designer", "intern", "lead", "architect", "consultant", "officer", "director", "specialist", "coordinator"]
+        return any(kw in line.lower() for kw in title_keywords)
+
     for i, stripped in enumerate(non_empty_lines):
-        # Check if this line contains a date range
-        date_match = re.search(date_pattern, stripped)
+        # Strip parentheses for date matching
+        clean_line = stripped.strip("()")
+        date_match = re.search(date_pattern, clean_line)
 
         if date_match:
-            # Save previous entry
             if current_entry:
                 entries.append(current_entry)
 
-            # Get the title — could be on this line or the previous line
-            title_part = re.sub(date_pattern, "", stripped).strip(" -–—|,")
+            title_part = re.sub(date_pattern, "", clean_line).strip(" -–—|,()")
             company_part = None
 
-            # If the date was on its own line, look back for title and company
-            if not title_part and i > 0:
+            # Look BACK for company and/or title
+            if i > 0 and i - 1 not in used_lines:
                 prev = non_empty_lines[i - 1]
-                if not prev.startswith(("•", "-", "*", "·")) and i - 1 not in used_lines:
-                    title_part = prev
-                    used_lines.add(i - 1)
-
-                    # Look one more line back for the company
-                    if i > 1:
-                        prev2 = non_empty_lines[i - 2]
-                        if not prev2.startswith(("•", "-", "*", "·")) and i - 2 not in used_lines:
-                            # Validate it looks like a company name, not a description
-                            # Company lines: short, contain org markers, start with uppercase
-                            first_char_upper = prev2[0].isupper() if prev2 else False
-                            has_org_marker = any(m in prev2 for m in [" Ltd", " LTD", " Inc", " Corp", " LLC", " Company", " Technologies", " Solutions", " Group", " Pvt"])
-                            has_location = "," in prev2 and len(prev2.split(",")[-1].strip()) < 20
-                            is_short = len(prev2) < 50
-
-                            if first_char_upper and is_short and (has_org_marker or has_location):
+                if not prev.startswith(("•", "-", "*", "·")):
+                    if _looks_like_company(prev):
+                        company_part = prev
+                        used_lines.add(i - 1)
+                        # Title might be further back or forward
+                        if not title_part and i > 1 and i - 2 not in used_lines:
+                            prev2 = non_empty_lines[i - 2]
+                            if _looks_like_title(prev2):
+                                title_part = prev2
+                                used_lines.add(i - 2)
+                    elif _looks_like_title(prev):
+                        title_part = prev
+                        used_lines.add(i - 1)
+                        # Company might be further back
+                        if i > 1 and i - 2 not in used_lines:
+                            prev2 = non_empty_lines[i - 2]
+                            if _looks_like_company(prev2):
                                 company_part = prev2
                                 used_lines.add(i - 2)
+                    elif not title_part:
+                        title_part = prev
+                        used_lines.add(i - 1)
 
-            # If no company found, inherit from the previous entry (same company, different role)
+            # Look FORWARD for title if not found yet
+            if not title_part and i + 1 < len(non_empty_lines):
+                next_line = non_empty_lines[i + 1]
+                if _looks_like_title(next_line) and not next_line.startswith(("•", "-", "*", "·")):
+                    title_part = next_line
+                    used_lines.add(i + 1)
+
+            # Inherit company from previous entry if not found
             if not company_part and entries:
                 company_part = entries[-1].get("company")
 
@@ -205,15 +240,13 @@ def parse_experience(text):
                 "duration_months": None,
                 "description": "",
             }
-        elif current_entry:
-            # If line starts with a bullet, it's a description point
+            used_lines.add(i)
+        elif current_entry and i not in used_lines:
             if stripped.startswith(("•", "-", "*", "·")):
                 desc_line = stripped.lstrip("•-*·  ")
                 if desc_line:
                     current_entry["description"] += desc_line + " "
             else:
-                # Could be a company name for the next entry, or description continuation
-                # Don't consume it here — let the date handler look back for it
                 current_entry["description"] += stripped + " "
 
     # Save last entry
@@ -320,7 +353,15 @@ def parse_skills(text):
 
 
 def parse_projects(text):
-    """Parse projects section into structured entries."""
+    """Parse projects section into structured entries.
+    
+    Handles multiple formats:
+    - "• Project Name: Description..." (bullet + colon)
+    - "Project Name - Subtitle | (Date)" followed by tech and description lines
+    - "Project Name" on its own line followed by description
+    - "Technologies: React, Node.js" on separate line
+    - Comma-separated tech list without "Technologies:" prefix
+    """
     entries = []
     if not text:
         return entries
@@ -328,37 +369,139 @@ def parse_projects(text):
     lines = text.split("\n")
     current_entry = None
 
+    date_pattern = r"(?i)\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}\s*[-–—]+\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{2,4}|present|current)"
+
+    def _is_tech_list(line):
+        """Check if a line is a comma-separated list of technologies."""
+        stripped = line.strip()
+        # Never treat bullet points as tech lists
+        if stripped.startswith(("•", "*", "·", "-")):
+            return False
+        # Explicit tech prefix
+        if re.match(r"(?i)^\s*(?:technologies|tech\s*stack|tools|built\s*with|stack|using)\s*:", stripped):
+            return True
+        # Comma-separated short items (at least 3 items, most under 20 chars)
+        parts = [p.strip().rstrip(".") for p in stripped.split(",") if p.strip()]
+        if len(parts) >= 3 and all(len(p) < 25 for p in parts):
+            # Check if items look like tech names — not common English words
+            non_tech_words = ["and", "the", "for", "with", "etc", "etc.", "admin", "teacher", "student",
+                              "guardian", "buyer", "seller", "agent", "user", "ensuring", "including",
+                              "scalable", "secure", "maintainable"]
+            tech_count = 0
+            for p in parts:
+                clean = p.strip().lower().rstrip(".)}")
+                if clean and clean not in non_tech_words and len(clean) > 1:
+                    # Looks like a tech name if it starts with uppercase or is a known pattern
+                    if p.strip()[0].isupper() or re.match(r"^[A-Za-z]+\.?[jJ][sS]$", p.strip()):
+                        tech_count += 1
+            # At least 60% of items should look like tech names
+            if tech_count / len(parts) >= 0.6:
+                return True
+        return False
+
+    def _extract_techs(line):
+        """Extract technology names from a tech line."""
+        # Remove prefix if present
+        tech_text = re.sub(r"(?i)^\s*(?:technologies|tech\s*stack|tools|built\s*with|stack|using)\s*:\s*", "", line)
+        return [t.strip().rstrip(".") for t in tech_text.split(",") if t.strip() and len(t.strip()) < 30]
+
+    def _is_project_title(line):
+        """Check if a line looks like a project title."""
+        stripped = line.strip()
+        # Not a bullet description
+        if stripped.startswith(("•", "*", "·")):
+            # But could be "• Project Name: description" format
+            bullet_match = re.match(r"^[•*·]\s*(.+?):\s*(.+)", stripped)
+            if bullet_match:
+                return True
+            return False
+        # Not a description line starting with a verb
+        description_starters = ["developed", "built", "created", "implemented", "designed", "managed",
+                                "collaborated", "contributed", "worked", "applied", "gained", "used",
+                                "integrated", "maintained", "optimized", "ensured", "provided", "performed",
+                                "engineered", "a web", "a platform", "an app", "complete", "web-based"]
+        if any(stripped.lower().startswith(v) for v in description_starters):
+            return False
+        # Not a tech list
+        if _is_tech_list(stripped):
+            return False
+        # Not a date-only line
+        clean = stripped.strip("()")
+        if re.match(date_pattern, clean) and len(re.sub(date_pattern, "", clean).strip(" -–—|,()")) < 5:
+            return False
+        # Should be reasonably short and not a plain sentence
+        if len(stripped) > 120:
+            return False
+        # Too short to be a project title (single words like "GitHub")
+        if len(stripped) < 8 and " " not in stripped:
+            return False
+        # Title indicators: contains separators, has title-case words, or is short
+        has_separator = any(sep in stripped for sep in [" - ", " – ", " — ", " | "])
+        is_short_nonsentence = len(stripped) < 60 and not stripped.endswith(".")
+        starts_upper = stripped[0].isupper() if stripped else False
+
+        return starts_upper and (has_separator or is_short_nonsentence)
+
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
 
-        # Check if this is a "Technologies:" line
-        tech_match = re.search(r"(?i)^\s*(?:technologies|tech\s*stack|tools|built\s*with|stack|using)\s*:\s*(.+)", stripped)
-        if tech_match and current_entry:
-            techs = [t.strip().rstrip(".") for t in tech_match.group(1).split(",") if t.strip()]
-            current_entry["technologies"] = techs
+        # Check for "• Project Name: Description" format
+        bullet_title_match = re.match(r"^[•\-*·]\s*(.+?):\s*(.+)", stripped)
+
+        # Check if this is a technology line
+        if _is_tech_list(stripped) and current_entry:
+            current_entry["technologies"] = _extract_techs(stripped)
             continue
 
-        # Check if this line starts a new project (bullet point with a title-like pattern)
-        # e.g. "• Food Order Website: Developed an efficient..."
-        project_match = re.match(r"^[•\-*·]\s*(.+?):\s*(.+)", stripped)
-        if project_match:
+        # Check for date-only lines (skip them, but store if needed)
+        clean_line = stripped.strip("()")
+        date_match = re.search(date_pattern, clean_line)
+        if date_match and len(re.sub(date_pattern, "", clean_line).strip(" -–—|,()")) < 5:
+            continue
+
+        # Check for bullet with title:description pattern
+        if bullet_title_match:
             if current_entry:
                 entries.append(current_entry)
             current_entry = {
-                "title": project_match.group(1).strip(),
+                "title": bullet_title_match.group(1).strip(),
                 "technologies": [],
-                "description": project_match.group(2).strip(),
+                "description": bullet_title_match.group(2).strip(),
             }
-        elif current_entry:
-            # Continuation of description
+            continue
+
+        # Check if this is a new project title
+        if _is_project_title(stripped):
+            if current_entry:
+                entries.append(current_entry)
+            # Clean the title — remove dates, pipes, links
+            title = stripped
+            title = re.sub(date_pattern, "", title)  # remove dates
+            title = re.sub(r"\|\s*GitHub.*$", "", title, flags=re.IGNORECASE)  # remove GitHub links
+            title = re.sub(r"\|\s*\(?\s*$", "", title)  # remove trailing pipes
+            title = title.strip(" -–—|,()")
+            current_entry = {
+                "title": title if title else stripped,
+                "technologies": [],
+                "description": "",
+            }
+            continue
+
+        # Otherwise it's a description line
+        if current_entry:
             desc_line = stripped.lstrip("•-*·  ")
-            current_entry["description"] += " " + desc_line
+            if desc_line:
+                if current_entry["description"]:
+                    current_entry["description"] += " " + desc_line
+                else:
+                    current_entry["description"] = desc_line
 
     if current_entry:
         entries.append(current_entry)
 
+    # Clean up
     for entry in entries:
         entry["description"] = entry["description"].strip()
 

@@ -96,6 +96,14 @@ export function deleteResume(resumeId) {
   return request(`/resumes/${resumeId}`, { method: "DELETE" });
 }
 
+export function deleteResumesBulk(resumeIds) {
+  return request("/resumes/delete/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resume_ids: resumeIds }),
+  });
+}
+
 export function getExtractedData(resumeId) {
   return request(`/resumes/${resumeId}/extracted`);
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { listJobs, listResumes, uploadResumesBulk, deleteResume, getResume } from "../services/api";
+import { listJobs, listResumes, uploadResumesBulk, deleteResume, deleteResumesBulk, getResume } from "../services/api";
 
 export default function Resumes() {
   const [searchParams] = useSearchParams();
@@ -12,6 +12,7 @@ export default function Resumes() {
   const [selectedResume, setSelectedResume] = useState(null);
   const [viewingPdf, setViewingPdf] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const fileInputRef = useRef();
@@ -77,9 +78,40 @@ export default function Resumes() {
     try {
       await deleteResume(resumeId);
       setSelectedResume(null);
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(resumeId); return n; });
       fetchResumes();
     } catch (err) {
       alert("Failed to delete: " + err.message);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected resume(s)?`)) return;
+    try {
+      await deleteResumesBulk(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setSelectedResume(null);
+      fetchResumes();
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === resumes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(resumes.map(r => r._id)));
     }
   };
 
@@ -167,9 +199,33 @@ export default function Resumes() {
           <div style={{ display: "grid", gridTemplateColumns: selectedResume ? "1fr 1fr" : "1fr", gap: 16 }}>
             {/* Resume list */}
             <div className="card">
-              <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>
-                Uploaded CVs ({resumes.length})
-              </h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 600 }}>
+                  Uploaded CVs ({resumes.length})
+                </h3>
+                {resumes.length > 0 && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <label style={{ fontSize: 12, color: "#6b7280", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === resumes.length && resumes.length > 0}
+                        onChange={toggleSelectAll}
+                        style={{ accentColor: "#4f46e5", cursor: "pointer" }}
+                      />
+                      Select All
+                    </label>
+                    {selectedIds.size > 0 && (
+                      <button
+                        className="btn btn-danger"
+                        style={{ fontSize: 11, padding: "4px 12px" }}
+                        onClick={handleBulkDelete}
+                      >
+                        Delete {selectedIds.size} Selected
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               {resumes.length === 0 ? (
                 <p style={{ color: "#9ca3af", fontSize: 13 }}>No CVs uploaded yet for this job</p>
               ) : (
@@ -189,6 +245,14 @@ export default function Resumes() {
                       }}
                       onClick={() => viewResume(resume._id)}
                     >
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8, minWidth: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(resume._id)}
+                          onChange={() => toggleSelect(resume._id)}
+                          onClick={e => e.stopPropagation()}
+                          style={{ marginTop: 3, accentColor: "#4f46e5", cursor: "pointer", flexShrink: 0 }}
+                        />
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {resume.filename}
@@ -196,6 +260,16 @@ export default function Resumes() {
                         <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
                           {resume.parsed_data?.name || "Name not extracted"}
                         </div>
+                        {resume.status === "failed" && resume.error_message && (
+                          <div style={{
+                            fontSize: 11, color: "#dc2626", marginTop: 4,
+                            padding: "4px 8px", borderRadius: 4,
+                            background: "#fef2f2", lineHeight: 1.4,
+                          }}>
+                            ⚠ {resume.error_message}
+                          </div>
+                        )}
+                      </div>
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                         {statusBadge(resume.status)}
