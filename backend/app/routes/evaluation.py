@@ -6,26 +6,34 @@ GET    /api/evaluation/results   → Get evaluation metrics and model comparison
 POST   /api/evaluation/classify  → Classify a single resume text with all models
 """
 from flask import Blueprint, jsonify, request
-from app.services.classifier import train_all_classifiers, get_evaluation_results, classify_resume
+from app.services.classifier import train_all_classifiers, train_structured_classifiers, get_evaluation_results, classify_resume
 
 evaluation_bp = Blueprint("evaluation", __name__)
 
 
 @evaluation_bp.route("/api/evaluation/train", methods=["POST"])
 def train_models():
-    """Train all four classifiers on the Kaggle resume dataset.
-    This takes 30-60 seconds depending on your machine.
-    """
+    """Train all classifiers on both datasets."""
+    results = {}
+
+    # Dataset 1: Resume text classification
     try:
-        results = train_all_classifiers()
-        return jsonify({
-            "message": "Training complete",
-            **results,
-        })
+        results["dataset1"] = train_all_classifiers()
+        results["dataset1"]["dataset_name"] = "Resume Text Dataset (Kaggle)"
     except FileNotFoundError as e:
-        return jsonify({"error": str(e)}), 404
-    except Exception as e:
-        return jsonify({"error": f"Training failed: {str(e)}"}), 500
+        results["dataset1"] = {"error": str(e)}
+
+    # Dataset 2: Structured features classification
+    try:
+        results["dataset2"] = train_structured_classifiers()
+        results["dataset2"]["dataset_name"] = "Candidate Job Role Dataset"
+    except FileNotFoundError as e:
+        results["dataset2"] = {"error": str(e)}
+
+    if all("error" in v for v in results.values()):
+        return jsonify({"error": "No datasets found"}), 404
+
+    return jsonify({"message": "Training complete", **results})
 
 
 @evaluation_bp.route("/api/evaluation/results", methods=["GET"])

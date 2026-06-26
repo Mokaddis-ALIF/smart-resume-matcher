@@ -5,7 +5,6 @@ Example document in the "jobs" collection:
 {
     "_id": ObjectId("..."),
     "title": "Senior Backend Developer",
-    "company": "Tech Corp",
     "created_at": "2026-06-19T10:30:00Z",
 
     "description": "We are looking for a senior backend developer...",
@@ -32,8 +31,6 @@ Example document in the "jobs" collection:
 from datetime import datetime, timezone
 
 
-# Default weights for scoring — these control how much each
-# category matters when ranking candidates against a job
 DEFAULT_WEIGHTS = {
     "skills": 0.40,
     "experience": 0.30,
@@ -42,11 +39,10 @@ DEFAULT_WEIGHTS = {
 }
 
 
-def create_job_doc(title, company, description, requirements):
-    """Create a new job posting document with default fields."""
+def create_job_doc(title, description, requirements):
+    """Create a new job posting document."""
     return {
         "title": title,
-        "company": company,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "description": description,
         "requirements": {
@@ -58,5 +54,5 @@ def create_job_doc(title, company, description, requirements):
         },
         "weights": DEFAULT_WEIGHTS.copy(),
         "matched_count": 0,
-        "status": "active",  # active → closed
+        "status": "active",
     }

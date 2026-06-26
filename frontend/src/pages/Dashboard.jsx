@@ -18,11 +18,11 @@ export default function Dashboard() {
         const total = data.jobs.reduce((sum, j) => sum + (j.matched_count || 0), 0);
         setTotalResumes(total);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     getEvaluationResults()
       .then(setEvalData)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const bestModel = evalData?.results
@@ -73,7 +73,6 @@ export default function Dashboard() {
                 <div key={job._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>{job.title}</div>
-                    <div style={{ fontSize: 11, color: "#9ca3af" }}>{job.company}</div>
                   </div>
                   <span style={{ fontSize: 12, color: "#6b7280" }}>{job.matched_count || 0} matched</span>
                 </div>
@@ -96,7 +95,7 @@ export default function Dashboard() {
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {Object.entries(evalData.results).map(([name, metrics]) => (
+                {Object?.entries(evalData?.dataset1?.results).map(([name, metrics]) => (
                   <div key={name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 12, width: 100, color: "#6b7280" }}>{name}</span>
                     <div style={{ flex: 1, height: 14, background: "#f3f4f6", borderRadius: 3, overflow: "hidden" }}>

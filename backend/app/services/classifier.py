@@ -236,10 +236,143 @@ def classify_resume(resume_text):
 
 
 def get_evaluation_results():
-    """Load saved evaluation results."""
-    results_path = os.path.join(MODEL_DIR, "evaluation_results.json")
-    if not os.path.exists(results_path):
-        return None
+    """Load saved evaluation results from both datasets."""
+    results = {}
 
-    with open(results_path, "r") as f:
-        return json.load(f)
+    # Dataset 1: Resume text classification
+    path1 = os.path.join(MODEL_DIR, "evaluation_results.json")
+    if os.path.exists(path1):
+        with open(path1, "r") as f:
+            results["dataset1"] = json.load(f)
+
+    # Dataset 2: Structured features classification
+    path2 = os.path.join(MODEL_DIR, "evaluation_results_structured.json")
+    if os.path.exists(path2):
+        with open(path2, "r") as f:
+            results["dataset2"] = json.load(f)
+
+    return results if results else None
+
+
+def train_structured_classifiers(test_size=0.2, random_state=42):
+    """Train classifiers on the structured candidate dataset.
+
+    Uses skills, qualification, and experience_level as features
+    to predict job_role. This is feature-based classification
+    as opposed to the text-based TF-IDF approach in Dataset 1.
+    """
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
+    csv_path = os.path.join(DATA_DIR, "candidate_job_role_dataset.csv")
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(
+            f"Dataset not found at {csv_path}. "
+            "Place candidate_job_role_dataset.csv in backend/data/"
+        )
+
+    df = pd.read_csv(csv_path)
+
+    # Combine skills + qualification + experience into a single text feature
+    # This lets us use TF-IDF on the combined text for consistent comparison
+    df["combined_features"] = (
+        df["skills"].fillna("") + " " +
+        df["qualification"].fillna("") + " " +
+        df["experience_level"].fillna("")
+    )
+
+    # Clean
+    df["combined_features"] = df["combined_features"].apply(_clean_resume_text)
+    df = df[df["combined_features"].str.len() > 5].reset_index(drop=True)
+
+    # Encode labels
+    label_encoder = LabelEncoder()
+    y = label_encoder.fit_transform(df["job_role"])
+    categories = label_encoder.classes_.tolist()
+
+    # TF-IDF on combined features
+    tfidf = TfidfVectorizer(max_features=3000, stop_words="english", ngram_range=(1, 2))
+    X = tfidf.fit_transform(df["combined_features"])
+
+    # Split
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state, stratify=y
+    )
+
+    classifiers = {
+        "SVM": SVC(kernel="linear", probability=True, random_state=random_state),
+        "Random Forest": RandomForestClassifier(n_estimators=100, random_state=random_state),
+        "KNN": KNeighborsClassifier(n_neighbors=5),
+        "Naive Bayes": MultinomialNB(),
+    }
+
+    results = {}
+
+    for name, clf in classifiers.items():
+        start_time = time.time()
+        clf.fit(X_train, y_train)
+        train_time = time.time() - start_time
+
+        start_time = time.time()
+        y_pred = clf.predict(X_test)
+        predict_time = time.time() - start_time
+
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
+        recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
+        f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
+        cm = confusion_matrix(y_test, y_pred)
+        report = classification_report(y_test, y_pred, target_names=categories, output_dict=True, zero_division=0)
+        cv_scores = cross_val_score(clf, X, y, cv=5, scoring="accuracy")
+
+        results[name] = {
+            "accuracy": round(accuracy * 100, 2),
+            "precision": round(precision * 100, 2),
+            "recall": round(recall * 100, 2),
+            "f1_score": round(f1 * 100, 2),
+            "train_time_seconds": round(train_time, 3),
+            "predict_time_seconds": round(predict_time, 3),
+            "cv_mean_accuracy": round(cv_scores.mean() * 100, 2),
+            "cv_std": round(cv_scores.std() * 100, 2),
+            "confusion_matrix": cm.tolist(),
+            "per_class_report": {
+                cat: {
+                    "precision": round(report[cat]["precision"] * 100, 2),
+                    "recall": round(report[cat]["recall"] * 100, 2),
+                    "f1_score": round(report[cat]["f1-score"] * 100, 2),
+                    "support": report[cat]["support"],
+                }
+                for cat in categories if cat in report
+            },
+        }
+
+        # Save model
+        model_path = os.path.join(MODEL_DIR, f"structured_{name.lower().replace(' ', '_')}.pkl")
+        with open(model_path, "wb") as f:
+            pickle.dump(clf, f)
+
+    # Save vectoriser and encoder
+    with open(os.path.join(MODEL_DIR, "structured_tfidf.pkl"), "wb") as f:
+        pickle.dump(tfidf, f)
+    with open(os.path.join(MODEL_DIR, "structured_label_encoder.pkl"), "wb") as f:
+        pickle.dump(label_encoder, f)
+
+    # Save results
+    with open(os.path.join(MODEL_DIR, "evaluation_results_structured.json"), "w") as f:
+        json.dump({
+            "results": results,
+            "categories": categories,
+            "dataset_size": len(df),
+            "train_size": X_train.shape[0],
+            "test_size": X_test.shape[0],
+            "feature_count": X.shape[1],
+            "dataset_name": "Candidate Job Role Dataset",
+            "approach": "Structured Features (Skills + Qualification + Experience)",
+        }, f, indent=2)
+
+    return {
+        "results": results,
+        "categories": categories,
+        "dataset_size": len(df),
+        "train_size": X_train.shape[0],
+        "test_size": X_test.shape[0],
+    }

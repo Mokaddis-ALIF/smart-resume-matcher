@@ -3,7 +3,6 @@ import { listJobs, createJob, updateJob, deleteJob } from "../services/api";
 
 const emptyForm = {
   title: "",
-  company: "",
   description: "",
   required_skills: "",
   preferred_skills: "",
@@ -42,7 +41,6 @@ export default function Jobs() {
     setEditingJobId(job._id);
     setForm({
       title: job.title || "",
-      company: job.company || "",
       description: job.description || "",
       required_skills: (job.requirements?.required_skills || []).join(", "),
       preferred_skills: (job.requirements?.preferred_skills || []).join(", "),
@@ -61,7 +59,6 @@ export default function Jobs() {
 
   const buildJobData = () => ({
     title: form.title,
-    company: form.company,
     description: form.description,
     requirements: {
       required_skills: form.required_skills.split(",").map(s => s.trim()).filter(Boolean),
@@ -116,15 +113,9 @@ export default function Jobs() {
             {editingJobId ? "Edit Job Posting" : "Create New Job Posting"}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Job Title *</label>
-                <input style={inputStyle} required value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Senior Python Developer" />
-              </div>
-              <div>
-                <label style={labelStyle}>Company *</label>
-                <input style={inputStyle} required value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="e.g. Tech Corp" />
-              </div>
+            <div>
+              <label style={labelStyle}>Job Title *</label>
+              <input style={inputStyle} required value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Senior Python Developer" />
             </div>
             <div>
               <label style={labelStyle}>Job Description *</label>
@@ -188,7 +179,6 @@ export default function Jobs() {
             <div key={job._id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 3 }}>{job.title}</h3>
-                <p style={{ fontSize: 13, color: "#6b7280" }}>{job.company}</p>
                 <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
                   {job.requirements?.required_skills?.map((skill, i) => (
                     <span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#eef2ff", color: "#4338ca" }}>{skill}</span>

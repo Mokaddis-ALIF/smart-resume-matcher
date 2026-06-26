@@ -26,14 +26,13 @@ def create_job():
     data = request.get_json()
 
     # Validate required fields
-    required = ["title", "company", "description", "requirements"]
+    required = ["title", "description", "requirements"]
     for field in required:
         if field not in data:
             return jsonify({"error": f"Missing required field: {field}"}), 400
 
     job = create_job_doc(
         title=data["title"],
-        company=data["company"],
         description=data["description"],
         requirements=data["requirements"],
     )
@@ -93,7 +92,7 @@ def update_job(job_id):
         return jsonify({"error": "Job not found"}), 404
 
     # Only update fields that are provided
-    allowed_fields = ["title", "company", "description", "requirements", "weights", "status"]
+    allowed_fields = ["title", "description", "requirements", "weights", "status"]
     updates = {k: v for k, v in data.items() if k in allowed_fields}
 
     if not updates:

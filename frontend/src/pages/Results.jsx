@@ -73,7 +73,7 @@ export default function Results() {
           >
             <option value="">-- Choose a job --</option>
             {jobs.map(job => (
-              <option key={job._id} value={job._id}>{job.title} — {job.company}</option>
+              <option key={job._id} value={job._id}>{job.title}</option>
             ))}
           </select>
         </div>
