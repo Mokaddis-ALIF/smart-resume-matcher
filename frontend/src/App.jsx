@@ -4,6 +4,7 @@ import Jobs from "./pages/Jobs";
 import Resumes from "./pages/Resumes";
 import Results from "./pages/Results";
 import Evaluation from "./pages/Evaluation";
+import Taxonomy from "./pages/Taxonomy";
 import "./App.css";
 
 function Sidebar() {
@@ -13,6 +14,7 @@ function Sidebar() {
     { to: "/resumes", label: "Resumes", icon: "📄" },
     { to: "/results", label: "Results", icon: "✅" },
     { to: "/evaluation", label: "Evaluation", icon: "📈" },
+    { to: "/taxonomy", label: "Taxonomy", icon: "🏷️" },
   ];
 
   return (
@@ -52,6 +54,7 @@ export default function App() {
             <Route path="/resumes" element={<Resumes />} />
             <Route path="/results" element={<Results />} />
             <Route path="/evaluation" element={<Evaluation />} />
+            <Route path="/taxonomy" element={<Taxonomy />} />
           </Routes>
         </main>
       </div>

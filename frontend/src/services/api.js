@@ -56,6 +56,26 @@ export function deleteJob(jobId) {
   return request(`/jobs/${jobId}`, { method: "DELETE" });
 }
 
+export function getSoftSkills() {
+  return request("/soft-skills");
+}
+
+export function addSoftSkill(name) {
+  return request("/soft-skills", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function validateSkills(skills) {
+  return request("/skills/validate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ skills }),
+  });
+}
+
 export function triggerMatching(jobId) {
   return request(`/jobs/${jobId}/match`, { method: "POST" });
 }
@@ -116,4 +136,35 @@ export function trainModels() {
 
 export function getEvaluationResults() {
   return request("/evaluation/results");
+}
+
+// ─── Taxonomy ───
+
+export function getTaxonomy(category) {
+  const query = category ? `?category=${category}` : "";
+  return request(`/taxonomy${query}`);
+}
+
+export function addTaxonomySkill(name, category, aliases) {
+  return request("/taxonomy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, category, aliases }),
+  });
+}
+
+export function updateTaxonomySkill(id, name, category, aliases) {
+  return request(`/taxonomy/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, category, aliases }),
+  });
+}
+
+export function deleteTaxonomySkill(id) {
+  return request(`/taxonomy/${id}`, { method: "DELETE" });
+}
+
+export function getTaxonomyCategories() {
+  return request("/taxonomy/categories");
 }

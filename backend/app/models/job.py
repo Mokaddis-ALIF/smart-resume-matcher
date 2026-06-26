@@ -39,9 +39,10 @@ DEFAULT_WEIGHTS = {
 }
 
 
-def create_job_doc(title, description, requirements):
+def create_job_doc(title, description, requirements, soft_skills=None, reference=None):
     """Create a new job posting document."""
     return {
+        "reference": reference,
         "title": title,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "description": description,
@@ -52,7 +53,26 @@ def create_job_doc(title, description, requirements):
             "education_level": requirements.get("education_level", None),
             "education_field": requirements.get("education_field", None),
         },
+        "soft_skills": soft_skills or [],
         "weights": DEFAULT_WEIGHTS.copy(),
         "matched_count": 0,
         "status": "active",
     }
+
+
+def generate_reference(db):
+    """Generate the next job reference number (JOB-001, JOB-002, etc.)."""
+    last_job = db.jobs.find_one(
+        {"reference": {"$exists": True, "$ne": None}},
+        sort=[("reference", -1)]
+    )
+    if last_job and last_job.get("reference"):
+        try:
+            num = int(last_job["reference"].split("-")[1])
+            return f"JOB-{num + 1:03d}"
+        except (IndexError, ValueError):
+            pass
+
+    # Count existing jobs as fallback
+    count = db.jobs.count_documents({})
+    return f"JOB-{count + 1:03d}"

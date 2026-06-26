@@ -1,20 +1,28 @@
 """
-Tech skill taxonomy for software engineering roles.
+Database-driven skill taxonomy.
 
-A curated dictionary of skills grouped by category. Used to:
-1. Match extracted text against known skills
-2. Normalise skill names (e.g., "JS" → "JavaScript")
-3. Categorise skills (language, framework, tool, etc.)
+Skills are stored in MongoDB and cached in memory for fast lookups.
+The cache refreshes when skills are added, edited, or deleted.
+On first run, the collection is seeded with default skills.
 """
+import re
+from difflib import SequenceMatcher
 
-# Each entry: "canonical_name": {"category": "...", "aliases": [...]}
-SKILL_TAXONOMY = {
+# In-memory cache — loaded from MongoDB
+_taxonomy = {}
+_alias_lookup = {}
+_cache_loaded = False
+
+
+# ─── Default skills (seeded on first run) ───
+
+DEFAULT_SKILLS = {
     # Programming Languages
     "Python": {"category": "language", "aliases": ["python", "python3", "py"]},
     "JavaScript": {"category": "language", "aliases": ["javascript", "js", "es6", "es2015", "ecmascript"]},
     "TypeScript": {"category": "language", "aliases": ["typescript", "ts"]},
     "Java": {"category": "language", "aliases": ["java", "j2ee", "jee"]},
-    "C#": {"category": "language", "aliases": ["c#", "csharp", "c sharp", ".net c#"]},
+    "C#": {"category": "language", "aliases": ["c#", "csharp", "c sharp"]},
     "C++": {"category": "language", "aliases": ["c++", "cpp"]},
     "C": {"category": "language", "aliases": ["c language", "ansi c"]},
     "Go": {"category": "language", "aliases": ["go", "golang"]},
@@ -36,9 +44,9 @@ SKILL_TAXONOMY = {
     "Haskell": {"category": "language", "aliases": ["haskell"]},
     "MATLAB": {"category": "language", "aliases": ["matlab"]},
 
-    # Frontend Frameworks & Libraries
+    # Frontend Frameworks
     "React": {"category": "framework", "aliases": ["react", "reactjs", "react.js", "react js"]},
-    "Angular": {"category": "framework", "aliases": ["angular", "angularjs", "angular.js", "angular 2"]},
+    "Angular": {"category": "framework", "aliases": ["angular", "angularjs", "angular.js"]},
     "Vue.js": {"category": "framework", "aliases": ["vue", "vuejs", "vue.js", "vue js", "vue 3"]},
     "Next.js": {"category": "framework", "aliases": ["next", "nextjs", "next.js"]},
     "Nuxt.js": {"category": "framework", "aliases": ["nuxt", "nuxtjs", "nuxt.js"]},
@@ -62,11 +70,11 @@ SKILL_TAXONOMY = {
     "Laravel": {"category": "framework", "aliases": ["laravel"]},
     "NestJS": {"category": "framework", "aliases": ["nestjs", "nest.js"]},
     "GraphQL": {"category": "framework", "aliases": ["graphql"]},
-    "REST": {"category": "framework", "aliases": ["rest", "restful", "rest api", "restful api"]},
+    "REST": {"category": "framework", "aliases": ["rest", "restful", "rest api", "restful api", "restapi", "rest-api", "restful apis"]},
 
     # Databases
     "MongoDB": {"category": "database", "aliases": ["mongodb", "mongo"]},
-    "PostgreSQL": {"category": "database", "aliases": ["postgresql", "postgres", "psql"]},
+    "PostgreSQL": {"category": "database", "aliases": ["postgresql", "postgres", "psql", "pgsql"]},
     "MySQL": {"category": "database", "aliases": ["mysql"]},
     "SQLite": {"category": "database", "aliases": ["sqlite", "sqlite3"]},
     "Redis": {"category": "database", "aliases": ["redis"]},
@@ -78,11 +86,18 @@ SKILL_TAXONOMY = {
     "SQL Server": {"category": "database", "aliases": ["sql server", "mssql", "microsoft sql server"]},
     "Supabase": {"category": "database", "aliases": ["supabase"]},
 
-    # Cloud & DevOps
+    # Cloud
     "AWS": {"category": "cloud", "aliases": ["aws", "amazon web services"]},
     "Azure": {"category": "cloud", "aliases": ["azure", "microsoft azure"]},
     "GCP": {"category": "cloud", "aliases": ["gcp", "google cloud", "google cloud platform"]},
-    "Docker": {"category": "devops", "aliases": ["docker"]},
+    "Cloud Computing": {"category": "cloud", "aliases": ["cloud", "cloud computing", "cloud services"]},
+    "Heroku": {"category": "cloud", "aliases": ["heroku"]},
+    "Vercel": {"category": "cloud", "aliases": ["vercel"]},
+    "Netlify": {"category": "cloud", "aliases": ["netlify"]},
+    "DigitalOcean": {"category": "cloud", "aliases": ["digitalocean", "digital ocean"]},
+
+    # DevOps
+    "Docker": {"category": "devops", "aliases": ["docker", "dockerfile", "docker-compose"]},
     "Kubernetes": {"category": "devops", "aliases": ["kubernetes", "k8s"]},
     "Jenkins": {"category": "devops", "aliases": ["jenkins"]},
     "GitHub Actions": {"category": "devops", "aliases": ["github actions"]},
@@ -110,9 +125,6 @@ SKILL_TAXONOMY = {
     "Yarn": {"category": "tool", "aliases": ["yarn"]},
     "Asana": {"category": "tool", "aliases": ["asana"]},
     "Trello": {"category": "tool", "aliases": ["trello"]},
-    "Netlify": {"category": "tool", "aliases": ["netlify"]},
-    "Vercel": {"category": "tool", "aliases": ["vercel"]},
-    "Heroku": {"category": "tool", "aliases": ["heroku"]},
 
     # Data Science & ML
     "TensorFlow": {"category": "ml", "aliases": ["tensorflow", "tf"]},
@@ -146,10 +158,10 @@ SKILL_TAXONOMY = {
     "Mocha": {"category": "testing", "aliases": ["mocha"]},
     "JUnit": {"category": "testing", "aliases": ["junit"]},
 
-    # Messaging & APIs
+    # Messaging
     "RabbitMQ": {"category": "messaging", "aliases": ["rabbitmq"]},
     "Kafka": {"category": "messaging", "aliases": ["kafka", "apache kafka"]},
-    "WebSocket": {"category": "messaging", "aliases": ["websocket", "websockets", "socket.io"]},
+    "WebSocket": {"category": "messaging", "aliases": ["websocket", "websockets", "socket.io", "socketio", "ws"]},
     "gRPC": {"category": "messaging", "aliases": ["grpc"]},
 
     # Methodologies
@@ -162,39 +174,166 @@ SKILL_TAXONOMY = {
     "Design Patterns": {"category": "methodology", "aliases": ["design patterns"]},
 }
 
-# Build a reverse lookup: alias → canonical name (case-insensitive)
-_ALIAS_LOOKUP = {}
-for canonical, info in SKILL_TAXONOMY.items():
-    _ALIAS_LOOKUP[canonical.lower()] = canonical
-    for alias in info["aliases"]:
-        _ALIAS_LOOKUP[alias.lower()] = canonical
 
+# ─── Database Operations ───
+
+def seed_taxonomy(db):
+    """Seed the skill_taxonomy collection with defaults if empty."""
+    if db.skill_taxonomy.count_documents({}) == 0:
+        for name, info in DEFAULT_SKILLS.items():
+            db.skill_taxonomy.insert_one({
+                "name": name,
+                "category": info["category"],
+                "aliases": info["aliases"],
+            })
+    reload_cache(db)
+
+
+def reload_cache(db):
+    """Reload the in-memory cache from MongoDB."""
+    global _taxonomy, _alias_lookup, _cache_loaded
+
+    _taxonomy = {}
+    _alias_lookup = {}
+
+    for doc in db.skill_taxonomy.find():
+        name = doc["name"]
+        _taxonomy[name] = {
+            "category": doc["category"],
+            "aliases": doc.get("aliases", []),
+        }
+        _alias_lookup[name.lower()] = name
+        for alias in doc.get("aliases", []):
+            _alias_lookup[alias.lower()] = name
+
+    _cache_loaded = True
+
+
+def _ensure_cache(db=None):
+    """Make sure the cache is loaded."""
+    global _cache_loaded
+    if not _cache_loaded and db:
+        seed_taxonomy(db)
+
+
+def get_all_skills(db):
+    """Get all skills from the database grouped by category."""
+    _ensure_cache(db)
+    skills = []
+    for doc in db.skill_taxonomy.find().sort("name", 1):
+        skills.append({
+            "id": str(doc["_id"]),
+            "name": doc["name"],
+            "category": doc["category"],
+            "aliases": doc.get("aliases", []),
+        })
+    return skills
+
+
+def add_skill(db, name, category, aliases):
+    """Add a new skill to the taxonomy."""
+    name = name.strip()
+    if not name:
+        return False, "Skill name cannot be empty"
+
+    existing = db.skill_taxonomy.find_one({"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}})
+    if existing:
+        return False, f"'{name}' already exists in the taxonomy"
+
+    clean_aliases = [a.strip().lower() for a in aliases if a.strip()]
+    # Always include the lowercase version of the name
+    if name.lower() not in clean_aliases:
+        clean_aliases.insert(0, name.lower())
+
+    db.skill_taxonomy.insert_one({
+        "name": name,
+        "category": category,
+        "aliases": clean_aliases,
+    })
+    reload_cache(db)
+    return True, f"'{name}' added to taxonomy"
+
+
+def update_skill(db, skill_id, name, category, aliases):
+    """Update an existing skill."""
+    from bson import ObjectId
+    clean_aliases = [a.strip().lower() for a in aliases if a.strip()]
+    if name.lower() not in clean_aliases:
+        clean_aliases.insert(0, name.lower())
+
+    db.skill_taxonomy.update_one(
+        {"_id": ObjectId(skill_id)},
+        {"$set": {"name": name, "category": category, "aliases": clean_aliases}}
+    )
+    reload_cache(db)
+    return True, f"'{name}' updated"
+
+
+def delete_skill(db, skill_id):
+    """Delete a skill from the taxonomy."""
+    from bson import ObjectId
+    skill = db.skill_taxonomy.find_one({"_id": ObjectId(skill_id)})
+    if not skill:
+        return False, "Skill not found"
+
+    db.skill_taxonomy.delete_one({"_id": ObjectId(skill_id)})
+    reload_cache(db)
+    return True, f"'{skill['name']}' deleted"
+
+
+# ─── Lookup Functions ───
 
 def normalise_skill(skill_text):
-    """Look up a skill string and return its canonical name, or None if not found."""
-    return _ALIAS_LOOKUP.get(skill_text.lower().strip())
+    """Look up a skill — exact match first, then fuzzy."""
+    text = skill_text.lower().strip()
+    if not text:
+        return None
+
+    exact = _alias_lookup.get(text)
+    if exact:
+        return exact
+
+    fuzzy = fuzzy_match_skill(text)
+    if fuzzy:
+        return fuzzy
+
+    return None
+
+
+def fuzzy_match_skill(skill_text, threshold=0.80):
+    """Find the closest matching skill using string similarity."""
+    text = skill_text.lower().strip()
+    if not text or len(text) < 2:
+        return None
+
+    best_match = None
+    best_score = 0
+
+    for alias, canonical in _alias_lookup.items():
+        if abs(len(alias) - len(text)) > max(len(text) * 0.4, 3):
+            continue
+        score = SequenceMatcher(None, text, alias).ratio()
+        if score > best_score and score >= threshold:
+            best_score = score
+            best_match = canonical
+
+    return best_match
 
 
 def get_skill_category(canonical_name):
     """Get the category for a canonical skill name."""
-    info = SKILL_TAXONOMY.get(canonical_name)
+    info = _taxonomy.get(canonical_name)
     return info["category"] if info else "unknown"
 
 
 def match_skills_in_text(text):
-    """Scan text for any skills from the taxonomy.
-
-    Returns list of {"skill": canonical, "category": cat, "source": "taxonomy"}
-    sorted by position in text (first occurrence).
-    """
+    """Scan text for any skills from the taxonomy."""
     text_lower = text.lower()
     found = {}
 
-    for canonical, info in SKILL_TAXONOMY.items():
+    for canonical, info in _taxonomy.items():
         all_names = [canonical] + info["aliases"]
         for name in all_names:
-            # Use word boundary matching to avoid partial matches
-            # e.g., "R" shouldn't match inside "React"
             pattern = r"(?<![a-zA-Z])" + re.escape(name) + r"(?![a-zA-Z])"
             match = re.search(pattern, text_lower if name == name.lower() else text)
             if match and canonical not in found:
@@ -205,8 +344,21 @@ def match_skills_in_text(text):
                     "position": match.start(),
                 }
 
-    # Sort by position in text
     return sorted(found.values(), key=lambda x: x["position"])
 
 
-import re  # needed for match_skills_in_text
+# ─── Category List ───
+
+SKILL_CATEGORIES = [
+    "language",
+    "framework",
+    "database",
+    "cloud",
+    "devops",
+    "tool",
+    "ml",
+    "mobile",
+    "testing",
+    "messaging",
+    "methodology",
+]

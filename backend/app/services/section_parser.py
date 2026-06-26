@@ -10,10 +10,10 @@ import re
 # Section header patterns — these match common CV section headings
 SECTION_PATTERNS = {
     "summary": r"(?i)^(summary|profile|about\s*me|objective|personal\s*statement|career\s*summary|professional\s*summary)\s*:?\s*$",
-    "experience": r"(?i)^(experience|employment|work\s*history|professional\s*experience|career\s*history|work\s*experience)\s*:?\s*$",
-    "education": r"(?i)^(education|academic|qualifications?|degrees?|certifications?)\s*:?\s*$",
-    "skills": r"(?i)^(skills|technical\s*skills|core\s*competencies|core\s*skills|key\s*skills)\s*:?\s*$",
-    "projects": r"(?i)^(projects?|personal\s*projects?|key\s*projects?|academic\s*projects?|remarkable\s*projects?)\s*:?\s*$",
+    "experience": r"(?i)^(experience|employment|work\s*history|professional\s*experience|career\s*history|work\s*experience|professional\s*background)\s*:?\s*$",
+    "education": r"(?i)^(education|academic|qualifications?|degrees?|certifications?|educational\s*background)\s*:?\s*$",
+    "skills": r"(?i)^(skills|technical\s*skills|core\s*competencies|core\s*skills|key\s*skills|functional\s*skills|technologies|tech\s*stack)\s*:?\s*$",
+    "projects": r"(?i)^(projects?|personal\s*projects?|key\s*projects?|academic\s*projects?|remarkable\s*projects?|project\s*contributions?|project\s*experience|project\s*work|project\s*details|notable\s*projects?|project\s*highlights?)\s*:?\s*$",
     "achievements": r"(?i)^(key\s*achievements?|achievements?|accomplishments?)\s*:?\s*$",
     "languages": r"(?i)^(language\s*proficiency|languages?|language\s*skills?)\s*:?\s*$",
     "other": r"(?i)^(hobbies|interests|references|additional\s*information|extracurricular|volunteer|awards?)\s*:?\s*$",
@@ -269,7 +269,7 @@ def parse_education(text):
     lines = text.split("\n")
     current_entry = None
 
-    degree_pattern = r"(?i)\b(ph\.?d|doctorate|master|msc|mba|bachelor|bsc|ba|bs|b\.?tech|m\.?tech|diploma|associate|a\.?s|a\.?a|higher\s*secondary|secondary\s*school)\b"
+    degree_pattern = r"(?i)\b(ph\.?d|doctorate|master|msc|m\.sc\.?|mba|bachelor|bsc|b\.sc\.?|ba|b\.a\.?|bs|b\.s\.?|b\.?tech|m\.?tech|b\.?eng?|m\.?eng?|diploma|associate|a\.?s|a\.?a|higher\s*secondary|secondary\s*school)\b"
     year_pattern = r"\b(19|20)\d{2}\b"
 
     for line in lines:

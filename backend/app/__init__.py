@@ -27,18 +27,24 @@ def create_app():
     # Ensure uploads folder exists
     os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
+    # Seed skill taxonomy if empty
+    from app.services.skill_taxonomy import seed_taxonomy
+    seed_taxonomy(db)
+
     # Register route blueprints
     from app.routes.health import health_bp
     from app.routes.jobs import jobs_bp
     from app.routes.resumes import resumes_bp
     from app.routes.evaluation import evaluation_bp
     from app.routes.docs import docs_bp
+    from app.routes.taxonomy import taxonomy_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(resumes_bp)
     app.register_blueprint(evaluation_bp)
     app.register_blueprint(docs_bp)
+    app.register_blueprint(taxonomy_bp)
 
     # Global error handlers
     @app.errorhandler(404)

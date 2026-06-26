@@ -10,19 +10,44 @@ POST   /api/jobs/<id>/match    → Trigger matching for all CVs against this job
 GET    /api/jobs/<id>/results  → Get all match results for this job
 """
 import os
+import re
 from flask import Blueprint, request, jsonify
 from bson import ObjectId
 from app import db
-from app.models.job import create_job_doc
+from app.models.job import create_job_doc, generate_reference
 from app.models.match_result import create_match_result_doc
 from app.services.matcher import match_resume_to_job
+from app.services.skill_taxonomy import normalise_skill
+from app.services.soft_skills import get_all_soft_skills, add_soft_skill
 
 jobs_bp = Blueprint("jobs", __name__)
 
 
+def _normalise_and_validate_skills(skills_list):
+    """Normalise skills through taxonomy and return warnings for unrecognised ones."""
+    normalised = []
+    warnings = []
+
+    for skill in skills_list:
+        skill = skill.strip()
+        if not skill:
+            continue
+        canonical = normalise_skill(skill)
+        if canonical:
+            if canonical not in normalised:
+                normalised.append(canonical)
+        else:
+            # Skill not in taxonomy — keep it but warn
+            if skill not in normalised:
+                normalised.append(skill)
+                warnings.append(skill)
+
+    return normalised, warnings
+
+
 @jobs_bp.route("/api/jobs", methods=["POST"])
 def create_job():
-    """Create a new job posting."""
+    """Create a new job posting with skill normalisation."""
     data = request.get_json()
 
     # Validate required fields
@@ -31,10 +56,35 @@ def create_job():
         if field not in data:
             return jsonify({"error": f"Missing required field: {field}"}), 400
 
+    # Normalise required and preferred skills through taxonomy
+    req_skills = data["requirements"].get("required_skills", [])
+    pref_skills = data["requirements"].get("preferred_skills", [])
+
+    normalised_req, req_warnings = _normalise_and_validate_skills(req_skills)
+    normalised_pref, pref_warnings = _normalise_and_validate_skills(pref_skills)
+
+    # Update requirements with normalised skills
+    data["requirements"]["required_skills"] = normalised_req
+    data["requirements"]["preferred_skills"] = normalised_pref
+
+    # Generate unique reference number
+    reference = generate_reference(db)
+
+    # Check for duplicate titles
+    duplicate_warning = None
+    existing = db.jobs.find_one({
+        "title": {"$regex": f"^{re.escape(data['title'])}$", "$options": "i"},
+        "status": "active",
+    })
+    if existing:
+        duplicate_warning = f"An active job with the same title already exists ({existing.get('reference', 'N/A')})."
+
     job = create_job_doc(
         title=data["title"],
         description=data["description"],
         requirements=data["requirements"],
+        soft_skills=data.get("soft_skills", []),
+        reference=reference,
     )
 
     # Allow custom weights if provided
@@ -44,7 +94,76 @@ def create_job():
     result = db.jobs.insert_one(job)
     job["_id"] = str(result.inserted_id)
 
-    return jsonify({"message": "Job created", "job": job}), 201
+    # Build warnings
+    all_warnings = req_warnings + pref_warnings
+    skill_warning = None
+    if all_warnings:
+        skill_warning = f"These skills are not in our taxonomy and may not match accurately: {', '.join(all_warnings)}."
+
+    return jsonify({
+        "message": "Job created",
+        "job": job,
+        "skill_warnings": skill_warning,
+        "duplicate_warning": duplicate_warning,
+    }), 201
+
+
+# ─── Soft Skills ───
+
+@jobs_bp.route("/api/soft-skills", methods=["GET"])
+def list_soft_skills():
+    """Get all available soft skills."""
+    skills = get_all_soft_skills(db)
+    return jsonify({"soft_skills": skills})
+
+
+@jobs_bp.route("/api/soft-skills", methods=["POST"])
+def create_soft_skill():
+    """Add a new soft skill to the database."""
+    data = request.get_json()
+    name = data.get("name", "")
+    success, message = add_soft_skill(db, name)
+    if success:
+        return jsonify({"message": message}), 201
+    return jsonify({"error": message}), 400
+
+
+@jobs_bp.route("/api/skills/validate", methods=["POST"])
+def validate_skills():
+    """Validate skills against taxonomy with fuzzy matching.
+    Returns each skill with match status and fuzzy suggestions.
+    """
+    data = request.get_json()
+    skills = data.get("skills", [])
+
+    results = []
+    for skill in skills:
+        skill = skill.strip()
+        if not skill:
+            continue
+        canonical = normalise_skill(skill)
+        if canonical:
+            results.append({
+                "input": skill,
+                "canonical": canonical,
+                "matched": True,
+                "fuzzy": canonical != _exact_lookup(skill),
+            })
+        else:
+            results.append({
+                "input": skill,
+                "canonical": None,
+                "matched": False,
+                "fuzzy": False,
+            })
+
+    return jsonify({"results": results})
+
+
+def _exact_lookup(skill_text):
+    """Check exact taxonomy match only (no fuzzy)."""
+    from app.services.skill_taxonomy import _ALIAS_LOOKUP
+    return _ALIAS_LOOKUP.get(skill_text.lower().strip())
 
 
 @jobs_bp.route("/api/jobs", methods=["GET"])
@@ -92,7 +211,7 @@ def update_job(job_id):
         return jsonify({"error": "Job not found"}), 404
 
     # Only update fields that are provided
-    allowed_fields = ["title", "description", "requirements", "weights", "status"]
+    allowed_fields = ["title", "description", "requirements", "weights", "status", "soft_skills"]
     updates = {k: v for k, v in data.items() if k in allowed_fields}
 
     if not updates:
