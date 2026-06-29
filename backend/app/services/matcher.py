@@ -4,8 +4,8 @@ Matching engine — scores and ranks CVs against a job posting.
 Scoring breakdown:
   - Skills match      (default 40% weight)
   - Experience match   (default 30% weight)
-  - Education match    (default 15% weight)
-  - Projects match     (default 15% weight)
+  - Education match    (default 10% weight)
+  - Projects match     (default 20% weight)
 
 Each category scores 0–100, then gets multiplied by its weight.
 The overall score is the sum of weighted scores.
@@ -158,73 +158,93 @@ def _estimate_months(start_str, end_str):
 
 
 def score_education(resume_parsed, job_requirements):
-    """Score how well a candidate's education matches the job requirements."""
+    """Score how well a candidate's education matches the job requirements.
+    
+    Only IT/tech-related degrees count as valid matches.
+    Non-IT degrees get a minimal score regardless of level.
+    """
     required_level = job_requirements.get("education_level", "none")
-    required_field = job_requirements.get("education_field", "")
 
     if required_level == "none" or not required_level:
-        return {"score": 100.0, "required_level": "none", "candidate_level": "n/a", "field_match": True}
+        return {"score": 100.0, "required_level": "none", "candidate_level": "n/a", "field_match": True, "it_related": True}
 
-    # Education level hierarchy
-    level_ranks = {
-        "none": 0,
-        "diploma": 1,
-        "associate": 2,
-        "bachelors": 3,
-        "masters": 4,
-        "phd": 5,
+    # IT-related fields — any degree in these fields counts
+    IT_FIELDS = {
+        "computer science", "computer engineering", "software engineering",
+        "information technology", "data science", "information systems",
+        "computer applications", "computing", "it", "cse", "cs",
+        "electronics", "electrical engineering", "mathematics", "statistics",
+        "physics", "applied mathematics", "artificial intelligence",
+        "machine learning", "cybersecurity", "network engineering",
+        "web development", "mobile development", "game development",
     }
 
-    # Normalise degree names from parsed data
+    level_ranks = {
+        "none": 0, "diploma": 1, "associate": 2,
+        "bachelors": 3, "masters": 4, "phd": 5,
+    }
+
     degree_map = {
-        "bachelor": "bachelors", "bsc": "bachelors", "ba": "bachelors", "bs": "bachelors", "b.tech": "bachelors",
-        "master": "masters", "msc": "masters", "mba": "masters", "m.tech": "masters",
+        "bachelor": "bachelors", "bsc": "bachelors", "b.sc.": "bachelors", "b.sc": "bachelors",
+        "ba": "bachelors", "bs": "bachelors", "b.s.": "bachelors", "b.a.": "bachelors",
+        "b.tech": "bachelors", "btech": "bachelors", "b.eng": "bachelors", "b.eng.": "bachelors",
+        "master": "masters", "msc": "masters", "m.sc.": "masters", "m.sc": "masters",
+        "mba": "masters", "m.tech": "masters", "mtech": "masters",
+        "m.eng": "masters", "m.eng.": "masters",
         "ph.d": "phd", "phd": "phd", "doctorate": "phd",
         "diploma": "diploma",
         "associate": "associate", "a.s": "associate", "a.a": "associate",
-        "higher secondary": "diploma", "secondary school": "none",
+        "higher secondary": "none", "secondary school": "none",
     }
 
-    # Find candidate's highest education level
+    # Find candidate's highest IT-related education
     candidate_level = "none"
     candidate_field = ""
     highest_rank = 0
+    is_it_related = False
 
     for edu in resume_parsed.get("education", []):
         degree = edu.get("degree", "").lower().strip()
         normalised = degree_map.get(degree, "none")
         rank = level_ranks.get(normalised, 0)
+        field = (edu.get("field", "") or "").lower().strip()
+
+        # Check if this degree is in an IT-related field
+        field_is_it = False
+        if field:
+            for it_field in IT_FIELDS:
+                if it_field in field or field in it_field:
+                    field_is_it = True
+                    break
 
         if rank > highest_rank:
             highest_rank = rank
             candidate_level = normalised
-            candidate_field = edu.get("field", "") or ""
+            candidate_field = field
+            is_it_related = field_is_it
 
     required_rank = level_ranks.get(required_level, 0)
 
-    # Score based on level
-    if highest_rank >= required_rank:
-        level_score = 100.0
-    elif highest_rank == required_rank - 1:
-        level_score = 70.0  # One level below
+    # Scoring logic
+    if is_it_related:
+        # IT-related degree — compare levels normally
+        if highest_rank >= required_rank:
+            score = 100.0
+        elif highest_rank == required_rank - 1:
+            score = 60.0
+        else:
+            score = 30.0
     else:
-        level_score = 40.0  # Two or more levels below
-
-    # Field match bonus/penalty
-    field_match = False
-    if required_field and candidate_field:
-        req_words = set(required_field.lower().split())
-        cand_words = set(candidate_field.lower().split())
-        # Check for overlap in field keywords
-        if req_words & cand_words or required_field.lower() in candidate_field.lower():
-            field_match = True
-            level_score = min(level_score + 5, 100.0)
+        # Non-IT degree — does not satisfy the requirement at all
+        score = 0.0
 
     return {
-        "score": round(level_score, 1),
+        "score": round(score, 1),
         "required_level": required_level,
         "candidate_level": candidate_level,
-        "field_match": field_match,
+        "candidate_field": candidate_field,
+        "field_match": is_it_related,
+        "it_related": is_it_related,
     }
 
 
@@ -334,8 +354,8 @@ def match_resume_to_job(resume, job):
     weights = job.get("weights", {
         "skills": 0.40,
         "experience": 0.30,
-        "education": 0.15,
-        "projects": 0.15,
+        "education": 0.10,
+        "projects": 0.20,
     })
 
     # Score each category
@@ -348,8 +368,8 @@ def match_resume_to_job(resume, job):
     overall_score = (
         skills_result["score"] * weights.get("skills", 0.40)
         + experience_result["score"] * weights.get("experience", 0.30)
-        + education_result["score"] * weights.get("education", 0.15)
-        + projects_result["score"] * weights.get("projects", 0.15)
+        + education_result["score"] * weights.get("education", 0.10)
+        + projects_result["score"] * weights.get("projects", 0.20)
     )
 
     # Add semantic similarity bonus (up to 5 extra points)
@@ -380,13 +400,13 @@ def match_resume_to_job(resume, job):
         },
         "education": {
             **education_result,
-            "weight": weights.get("education", 0.15),
-            "weighted_score": round(education_result["score"] * weights.get("education", 0.15), 1),
+            "weight": weights.get("education", 0.10),
+            "weighted_score": round(education_result["score"] * weights.get("education", 0.10), 1),
         },
         "projects": {
             **projects_result,
-            "weight": weights.get("projects", 0.15),
-            "weighted_score": round(projects_result["score"] * weights.get("projects", 0.15), 1),
+            "weight": weights.get("projects", 0.20),
+            "weighted_score": round(projects_result["score"] * weights.get("projects", 0.20), 1),
         },
     }
 

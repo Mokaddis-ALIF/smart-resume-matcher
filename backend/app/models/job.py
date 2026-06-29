@@ -34,8 +34,8 @@ from datetime import datetime, timezone
 DEFAULT_WEIGHTS = {
     "skills": 0.40,
     "experience": 0.30,
-    "education": 0.15,
-    "projects": 0.15,
+    "education": 0.10,
+    "projects": 0.20,
 }
 
 
@@ -51,7 +51,6 @@ def create_job_doc(title, description, requirements, soft_skills=None, reference
             "preferred_skills": requirements.get("preferred_skills", []),
             "min_experience_years": requirements.get("min_experience_years", 0),
             "education_level": requirements.get("education_level", None),
-            "education_field": requirements.get("education_field", None),
         },
         "soft_skills": soft_skills or [],
         "weights": DEFAULT_WEIGHTS.copy(),

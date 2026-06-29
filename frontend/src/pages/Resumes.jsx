@@ -19,7 +19,7 @@ export default function Resumes() {
 
   // Fetch jobs on mount
   useEffect(() => {
-    listJobs().then(data => setJobs(data.jobs)).catch(() => {});
+    listJobs().then(data => setJobs(data.jobs)).catch(() => { });
   }, []);
 
   // Fetch resumes when job is selected
@@ -253,23 +253,23 @@ export default function Resumes() {
                           onClick={e => e.stopPropagation()}
                           style={{ marginTop: 3, accentColor: "#4f46e5", cursor: "pointer", flexShrink: 0 }}
                         />
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {resume.filename}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-                          {resume.parsed_data?.name || "Name not extracted"}
-                        </div>
-                        {resume.status === "failed" && resume.error_message && (
-                          <div style={{
-                            fontSize: 11, color: "#dc2626", marginTop: 4,
-                            padding: "4px 8px", borderRadius: 4,
-                            background: "#fef2f2", lineHeight: 1.4,
-                          }}>
-                            ⚠ {resume.error_message}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {resume.filename}
                           </div>
-                        )}
-                      </div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                            {resume.parsed_data?.name || "Name not extracted"}
+                          </div>
+                          {resume.status === "failed" && resume.error_message && (
+                            <div style={{
+                              fontSize: 11, color: "#dc2626", marginTop: 4,
+                              padding: "4px 8px", borderRadius: 4,
+                              background: "#fef2f2", lineHeight: 1.4,
+                            }}>
+                              ⚠ {resume.error_message}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                         {statusBadge(resume.status)}
@@ -312,10 +312,7 @@ export default function Resumes() {
 
                 {/* Contact info */}
                 <Section title="Contact">
-                  <Field label="Name" value={selectedResume.parsed_data?.name} />
-                  <Field label="Email" value={selectedResume.parsed_data?.email} />
-                  <Field label="Phone" value={selectedResume.parsed_data?.phone} />
-                  <Field label="Location" value={selectedResume.parsed_data?.location} />
+                  <Field label="Email :" value={selectedResume.parsed_data?.email} />
                 </Section>
 
                 {/* Summary */}
@@ -405,7 +402,7 @@ export default function Resumes() {
                         <div style={{ fontSize: 13, fontWeight: 600 }}>{exp.job_title || "Untitled Role"}</div>
                         <div style={{ fontSize: 12, color: "#6b7280" }}>{exp.company}</div>
                         <div style={{ fontSize: 11, color: "#9ca3af" }}>{exp.start_date} — {exp.end_date}</div>
-                        {exp.description && <p style={{ fontSize: 12, color: "#374151", marginTop: 4, lineHeight: 1.5 }}>{exp.description}</p>}
+                        {/* {exp.description && <p style={{ fontSize: 12, color: "#374151", marginTop: 4, lineHeight: 1.5 }}>{exp.description}</p>} */}
                       </div>
                     ))
                   ) : <Empty />}
@@ -437,7 +434,7 @@ export default function Resumes() {
                             ))}
                           </div>
                         )}
-                        {proj.description && <p style={{ fontSize: 12, color: "#374151", marginTop: 4, lineHeight: 1.5 }}>{proj.description}</p>}
+                        {/* {proj.description && <p style={{ fontSize: 12, color: "#374151", marginTop: 4, lineHeight: 1.5 }}>{proj.description}</p>} */}
                       </div>
                     ))
                   ) : <Empty />}

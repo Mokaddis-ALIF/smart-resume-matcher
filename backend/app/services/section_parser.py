@@ -34,20 +34,26 @@ def is_section_heading(line):
     """
     stripped = line.strip()
 
-    # Skip empty lines, bullet points, and long lines
-    if not stripped or len(stripped) > 40:
+    # Strip trailing decorative characters (underscores, dashes, equals, dots)
+    cleaned = re.sub(r"[_\-=.•·~]+\s*$", "", stripped).strip()
+    # Also strip leading decorative characters
+    cleaned = re.sub(r"^[_\-=.•·~]+\s*", "", cleaned).strip()
+
+    # Skip empty lines and bullet points
+    if not cleaned:
         return None
-    if stripped.startswith(("•", "-", "*", "·", "–")):
+    if cleaned.startswith(("•", "-", "*", "·", "–")):
+        return None
+    # Skip long lines (after cleaning)
+    if len(cleaned) > 40:
         return None
     # Skip lines with colons mid-text (like "Technologies: React, Flask")
-    if ":" in stripped and len(stripped.split(":")[0]) > 3:
-        words_before_colon = stripped.split(":")[0].strip()
-        # Allow "Skills:" but not "Technologies: React, Flask"
-        if len(stripped.split(":")[1].strip()) > 10:
+    if ":" in cleaned and len(cleaned.split(":")[0]) > 3:
+        if len(cleaned.split(":")[1].strip()) > 10:
             return None
 
     for section_name, pattern in SECTION_PATTERNS.items():
-        if re.search(pattern, stripped):
+        if re.search(pattern, cleaned):
             return section_name
 
     return None
@@ -73,10 +79,21 @@ def extract_contact_info(text):
                     contact["name"] = clean
                     break
 
-    # Email
-    email_match = re.search(EMAIL_PATTERN, text)
-    if email_match:
-        contact["email"] = email_match.group()
+    # Email — priority: 1) labelled email, 2) email in first 10 lines, 3) any email in text
+    labelled_email = re.search(r"(?i)(?:e[\-\s]?mail|email)\s*[:\s|]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", text)
+    if labelled_email:
+        contact["email"] = labelled_email.group(1)
+    else:
+        # Look in the first 10 lines (contact info is always near the top)
+        top_lines = "\n".join(lines[:10])
+        top_email = re.search(EMAIL_PATTERN, top_lines)
+        if top_email:
+            contact["email"] = top_email.group()
+        else:
+            # Fall back to any email in the full text
+            email_match = re.search(EMAIL_PATTERN, text)
+            if email_match:
+                contact["email"] = email_match.group()
 
     # Phone
     phone_match = re.search(PHONE_PATTERN, text)
@@ -180,8 +197,33 @@ def parse_experience(text):
             return False
         if line.startswith(("•", "-", "*", "·")):
             return False
-        title_keywords = ["engineer", "developer", "manager", "analyst", "designer", "intern", "lead", "architect", "consultant", "officer", "director", "specialist", "coordinator"]
+        title_keywords = ["engineer", "developer", "manager", "analyst", "designer", "intern", "lead", "architect", "consultant", "officer", "director", "specialist", "coordinator", "executive"]
         return any(kw in line.lower() for kw in title_keywords)
+
+    def _parse_pipe_line(line):
+        """Parse a pipe-separated line like 'Title | Company | Location' into title and company."""
+        parts = [p.strip() for p in line.split("|") if p.strip()]
+        if len(parts) < 2:
+            return None, None
+
+        title = None
+        company = None
+        for part in parts:
+            if _looks_like_title(part) and not title:
+                title = part
+            elif _looks_like_company(part) and not company:
+                company = part
+            elif not company and not _looks_like_title(part):
+                # Could be company without org markers
+                company = part
+
+        # If no title found, first part is usually the title
+        if not title and parts:
+            title = parts[0]
+        if not company and len(parts) > 1:
+            company = parts[1]
+
+        return title, company
 
     for i, stripped in enumerate(non_empty_lines):
         # Strip parentheses for date matching
@@ -199,19 +241,30 @@ def parse_experience(text):
             if i > 0 and i - 1 not in used_lines:
                 prev = non_empty_lines[i - 1]
                 if not prev.startswith(("•", "-", "*", "·")):
-                    if _looks_like_company(prev):
+                    # Check for pipe-separated format: "Title | Company | Location"
+                    if "|" in prev:
+                        pipe_title, pipe_company = _parse_pipe_line(prev)
+                        if pipe_title:
+                            title_part = pipe_title
+                        if pipe_company:
+                            company_part = pipe_company
+                        used_lines.add(i - 1)
+                    elif _looks_like_company(prev):
                         company_part = prev
                         used_lines.add(i - 1)
-                        # Title might be further back or forward
                         if not title_part and i > 1 and i - 2 not in used_lines:
                             prev2 = non_empty_lines[i - 2]
                             if _looks_like_title(prev2):
                                 title_part = prev2
                                 used_lines.add(i - 2)
+                            elif "|" in prev2:
+                                pipe_title, pipe_company = _parse_pipe_line(prev2)
+                                if pipe_title:
+                                    title_part = pipe_title
+                                used_lines.add(i - 2)
                     elif _looks_like_title(prev):
                         title_part = prev
                         used_lines.add(i - 1)
-                        # Company might be further back
                         if i > 1 and i - 2 not in used_lines:
                             prev2 = non_empty_lines[i - 2]
                             if _looks_like_company(prev2):

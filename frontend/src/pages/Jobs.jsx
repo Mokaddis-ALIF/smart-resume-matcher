@@ -7,8 +7,7 @@ const emptyForm = {
   required_skills: "",
   preferred_skills: "",
   min_experience_years: 0,
-  education_level: "bachelors",
-  education_field: "",
+  education_level: "none",
   soft_skills: [],
 };
 
@@ -87,8 +86,7 @@ export default function Jobs() {
       required_skills: (job.requirements?.required_skills || []).join(", "),
       preferred_skills: (job.requirements?.preferred_skills || []).join(", "),
       min_experience_years: job.requirements?.min_experience_years || 0,
-      education_level: job.requirements?.education_level || "bachelors",
-      education_field: job.requirements?.education_field || "",
+      education_level: job.requirements?.education_level || "none",
       soft_skills: job.soft_skills || [],
     });
     setShowForm(true);
@@ -110,7 +108,6 @@ export default function Jobs() {
       preferred_skills: form.preferred_skills.split(",").map(s => s.trim()).filter(Boolean),
       min_experience_years: parseInt(form.min_experience_years) || 0,
       education_level: form.education_level,
-      education_field: form.education_field,
     },
     soft_skills: form.soft_skills,
   });
@@ -231,26 +228,32 @@ export default function Jobs() {
               <input style={inputStyle} value={form.preferred_skills} onChange={e => setForm({...form, preferred_skills: e.target.value})} placeholder="e.g. Kubernetes, AWS, Redis" />
               {renderSkillTags(prefValidation)}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
                 <label style={labelStyle}>Min. Experience (years)</label>
                 <input style={inputStyle} type="number" min="0" value={form.min_experience_years} onChange={e => setForm({...form, min_experience_years: e.target.value})} />
               </div>
               <div>
-                <label style={labelStyle}>Education Level</label>
+                <label style={labelStyle}>Education Requirement</label>
                 <select style={inputStyle} value={form.education_level} onChange={e => setForm({...form, education_level: e.target.value})}>
                   <option value="none">None Required</option>
-                  <option value="diploma">Diploma</option>
-                  <option value="bachelors">Bachelor's</option>
-                  <option value="masters">Master's</option>
-                  <option value="phd">PhD</option>
+                  <option value="bachelors">Bachelor's (IT-related field)</option>
+                  <option value="masters">Master's (IT-related field)</option>
+                  <option value="phd">PhD (IT-related field)</option>
                 </select>
               </div>
-              <div>
-                <label style={labelStyle}>Education Field</label>
-                <input style={inputStyle} value={form.education_field} onChange={e => setForm({...form, education_field: e.target.value})} placeholder="e.g. Computer Science" />
-              </div>
             </div>
+            {form.education_level !== "none" && (
+              <div style={{
+                fontSize: 11, color: "#6b7280", padding: "8px 12px",
+                background: "#f9fafb", borderRadius: 6, lineHeight: 1.6,
+              }}>
+                <strong>IT-related fields that qualify:</strong> Computer Science, Software Engineering, Data Science,
+                Information Technology, Computer Engineering, Mathematics, Statistics, Electronics,
+                Artificial Intelligence, Cybersecurity, and similar tech fields.
+                Non-IT degrees (Finance, Arts, Business, etc.) will not satisfy this requirement.
+              </div>
+            )}
 
             {/* Soft Skills */}
             <div>
