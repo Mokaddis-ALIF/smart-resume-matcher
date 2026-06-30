@@ -7,13 +7,13 @@ education, experience, skills, projects, and contact info.
 import re
 
 
-# Section header patterns — simple keyword matching
-# The is_section_heading() gatekeeper ensures these only match actual headings
-# (under 40 chars, not bullets, not description text)
-
+# Section header patterns — these match common CV section headings
 # SECTION_PATTERNS = {
 #     "summary": r"(?i)^(summary|profile|about\s*me|objective|personal\s*statement|career\s*summary|professional\s*summary)\s*:?\s*$",
+
+#     # "experience": r"(?i)^(experience|employment|work\s*history|professional\s*experience|career\s*history|work\s*experience|professional\s*background)\s*:?\s*$",
 #     "experience": r"(?i)^(experience|employment|work\s*history|professional\s*experience|career\s*history|work(?:ing)?\s*experience|professional\s*background)(\s*[,&].*?)?\s*:?\s*$",
+
 #     "education": r"(?i)^(education|academic|qualifications?|degrees?|certifications?|educational\s*background)\s*:?\s*$",
 #     "skills": r"(?i)^(skills|technical\s*skills|core\s*competencies|core\s*skills|key\s*skills|functional\s*skills|technologies|tech\s*stack)\s*:?\s*$",
 #     "projects": r"(?i)^(projects?|personal\s*projects?|key\s*projects?|academic\s*projects?|remarkable\s*projects?|project\s*contributions?|project\s*experience|project\s*work|project\s*details|notable\s*projects?|project\s*highlights?)\s*:?\s*$",
@@ -24,7 +24,7 @@ import re
 
 SECTION_PATTERNS = {
     "summary": r"(?i)\b(summary|profile|about\s*me|objective)\b",
-    "experience": r"(?i)\b(experience|employment)\b",
+    "experience": r"(?i)\bexperience\b",
     "education": r"(?i)\b(education|qualification|degree)\b",
     "skills": r"(?i)\b(skills?|competenc|technologies|tech\s*stack)\b",
     "projects": r"(?i)\bprojects?\b",
@@ -32,9 +32,6 @@ SECTION_PATTERNS = {
     "languages": r"(?i)\blanguages?\b",
     "other": r"(?i)\b(hobbies|interests|references|volunteer|awards?|certifications?)\b",
 }
-
-# Bullet characters — all Unicode variants used in CVs
-BULLETS = ("•", "-", "*", "·", "–", "●")
 
 # Patterns for extracting contact information
 EMAIL_PATTERN = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
@@ -51,17 +48,22 @@ def is_section_heading(line):
     """
     stripped = line.strip()
 
+    # # Strip trailing decorative characters (underscores, dashes, equals, dots)
+    # cleaned = re.sub(r"[_\-=.•·~]+\s*$", "", stripped).strip()
+    # # Also strip leading decorative characters
+    # cleaned = re.sub(r"^[_\-=.•·~]+\s*", "", cleaned).strip()
+
     # Strip zero-width spaces and other invisible Unicode characters
     stripped = re.sub(r"[\u200b\u200c\u200d\ufeff\u00a0]", "", stripped)
     # Strip trailing decorative characters (underscores, dashes, equals, dots)
-    cleaned = re.sub(r"[_\-=.•·~●]+\s*$", "", stripped).strip()
+    cleaned = re.sub(r"[_\-=.•·~]+\s*$", "", stripped).strip()
     # Also strip leading decorative characters
-    cleaned = re.sub(r"^[_\-=.•·~●]+\s*", "", cleaned).strip()
+    cleaned = re.sub(r"^[_\-=.•·~]+\s*", "", cleaned).strip()
 
     # Skip empty lines and bullet points
     if not cleaned:
         return None
-    if cleaned.startswith(BULLETS):
+    if cleaned.startswith(("•", "-", "*", "·", "–")):
         return None
     # Skip long lines (after cleaning)
     if len(cleaned) > 40:
@@ -97,6 +99,22 @@ def extract_contact_info(text):
                 if "linkedin" not in clean.lower() and "github" not in clean.lower():
                     contact["name"] = clean
                     break
+
+    # # Email — priority: 1) labelled email, 2) email in first 10 lines, 3) any email in text
+    # labelled_email = re.search(r"(?i)(?:e[\-\s]?mail|email)\s*[:\s|]\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", text)
+    # if labelled_email:
+    #     contact["email"] = labelled_email.group(1)
+    # else:
+    #     # Look in the first 10 lines (contact info is always near the top)
+    #     top_lines = "\n".join(lines[:10])
+    #     top_email = re.search(EMAIL_PATTERN, top_lines)
+    #     if top_email:
+    #         contact["email"] = top_email.group()
+    #     else:
+    #         # Fall back to any email in the full text
+    #         email_match = re.search(EMAIL_PATTERN, text)
+    #         if email_match:
+    #             contact["email"] = email_match.group()
 
     # Email — priority: 1) email in first 10 lines, 2) labelled email, 3) any email
     top_lines = "\n".join(lines[:10])
@@ -181,8 +199,7 @@ def parse_experience(text):
     Handles multiple CV formats:
     - Format A: Company → Title → Date (title before date)
     - Format B: Company → Date → Title (title after date)
-    - Format C: Title | Company | Location (pipe-separated)
-    - Format D: Title — Company — Date (all on one line)
+    - Format C: Title — Company — Date (all on one line)
     """
     entries = []
     if not text:
@@ -203,7 +220,7 @@ def parse_experience(text):
         """Check if a line looks like a company name."""
         if not line or len(line) > 60:
             return False
-        if line.startswith(BULLETS):
+        if line.startswith(("•", "-", "*", "·")):
             return False
         has_org_marker = any(m in line for m in [" Ltd", " LTD", " Inc", " Corp", " LLC", " Company", " Technologies", " Solutions", " Group", " Pvt", " Soft.", " Labs"])
         has_location = "," in line and len(line.split(",")[-1].strip()) < 20
@@ -213,7 +230,7 @@ def parse_experience(text):
         """Check if a line looks like a job title."""
         if not line or len(line) > 80:
             return False
-        if line.startswith(BULLETS):
+        if line.startswith(("•", "-", "*", "·")):
             return False
         title_keywords = ["engineer", "developer", "manager", "analyst", "designer", "intern", "lead", "architect", "consultant", "officer", "director", "specialist", "coordinator", "executive"]
         return any(kw in line.lower() for kw in title_keywords)
@@ -232,8 +249,10 @@ def parse_experience(text):
             elif _looks_like_company(part) and not company:
                 company = part
             elif not company and not _looks_like_title(part):
+                # Could be company without org markers
                 company = part
 
+        # If no title found, first part is usually the title
         if not title and parts:
             title = parts[0]
         if not company and len(parts) > 1:
@@ -250,6 +269,9 @@ def parse_experience(text):
             if current_entry:
                 entries.append(current_entry)
 
+            # title_part = re.sub(date_pattern, "", clean_line).strip(" -–—|,()")
+            # company_part = None
+
             title_part = re.sub(date_pattern, "", clean_line).strip(" -–—|,()")
             company_part = None
 
@@ -264,7 +286,7 @@ def parse_experience(text):
             # Look BACK for company and/or title
             if i > 0 and i - 1 not in used_lines:
                 prev = non_empty_lines[i - 1]
-                if not prev.startswith(BULLETS):
+                if not prev.startswith(("•", "-", "*", "·")):
                     # Check for pipe-separated format: "Title | Company | Location"
                     if "|" in prev:
                         pipe_title, pipe_company = _parse_pipe_line(prev)
@@ -301,7 +323,7 @@ def parse_experience(text):
             # Look FORWARD for title if not found yet
             if not title_part and i + 1 < len(non_empty_lines):
                 next_line = non_empty_lines[i + 1]
-                if _looks_like_title(next_line) and not next_line.startswith(BULLETS):
+                if _looks_like_title(next_line) and not next_line.startswith(("•", "-", "*", "·")):
                     title_part = next_line
                     used_lines.add(i + 1)
 
@@ -319,8 +341,8 @@ def parse_experience(text):
             }
             used_lines.add(i)
         elif current_entry and i not in used_lines:
-            if stripped.startswith(BULLETS):
-                desc_line = stripped.lstrip("•-*·●–  ")
+            if stripped.startswith(("•", "-", "*", "·")):
+                desc_line = stripped.lstrip("•-*·  ")
                 if desc_line:
                     current_entry["description"] += desc_line + " "
             else:
@@ -378,7 +400,7 @@ def parse_education(text):
 
         elif current_entry and not current_entry["institution"]:
             # Next meaningful line after degree is likely the institution
-            if not stripped.startswith(BULLETS) and len(stripped) > 3:
+            if not stripped.startswith(("•", "-", "*", "·")) and len(stripped) > 3:
                 # Skip if it's just a city name or a short word
                 if not re.match(r"^[A-Z][a-z]+$", stripped) or len(stripped) > 15:
                     current_entry["institution"] = stripped
@@ -396,6 +418,13 @@ def parse_skills(text):
 
     skills = []
 
+    # Handle various formats:
+    # "Python, Java, C++"
+    # "• Python • Java • C++"
+    # "- Python\n- Java"
+    # "Python | Java | C++"
+    # "Tools: Git | GitHub | Asana"
+
     # Process line by line to handle "Category: skill, skill" format
     for line in text.split("\n"):
         line = line.strip()
@@ -407,14 +436,14 @@ def parse_skills(text):
             line = line.split(":", 1)[1]
 
         # Replace common separators with commas
-        cleaned = line.replace("|", ",").replace("•", ",").replace("·", ",").replace("●", ",")
+        cleaned = line.replace("|", ",").replace("•", ",").replace("·", ",")
         cleaned = re.sub(r"^\s*[-*]\s*", ",", cleaned)
 
         # Split by commas
         raw_skills = re.split(r"[,]+", cleaned)
 
         for skill in raw_skills:
-            s = skill.strip().strip("-•·●* ")
+            s = skill.strip().strip("-•·* ")
             # Filter out empty strings and overly long strings (not a skill)
             if s and 1 < len(s) < 40:
                 skills.append(s)
@@ -431,7 +460,6 @@ def parse_projects(text):
     - "Project Name" on its own line followed by description
     - "Technologies: React, Node.js" on separate line
     - Comma-separated tech list without "Technologies:" prefix
-    - "● Project description" (bullet-only projects without clear titles)
     """
     entries = []
     if not text:
@@ -446,7 +474,7 @@ def parse_projects(text):
         """Check if a line is a comma-separated list of technologies."""
         stripped = line.strip()
         # Never treat bullet points as tech lists
-        if stripped.startswith(BULLETS):
+        if stripped.startswith(("•", "*", "·", "-")):
             return False
         # Explicit tech prefix
         if re.match(r"(?i)^\s*(?:technologies|tech\s*stack|tools|built\s*with|stack|using)\s*:", stripped):
@@ -454,6 +482,7 @@ def parse_projects(text):
         # Comma-separated short items (at least 3 items, most under 20 chars)
         parts = [p.strip().rstrip(".") for p in stripped.split(",") if p.strip()]
         if len(parts) >= 3 and all(len(p) < 25 for p in parts):
+            # Check if items look like tech names — not common English words
             non_tech_words = ["and", "the", "for", "with", "etc", "etc.", "admin", "teacher", "student",
                               "guardian", "buyer", "seller", "agent", "user", "ensuring", "including",
                               "scalable", "secure", "maintainable"]
@@ -461,14 +490,17 @@ def parse_projects(text):
             for p in parts:
                 clean = p.strip().lower().rstrip(".)}")
                 if clean and clean not in non_tech_words and len(clean) > 1:
+                    # Looks like a tech name if it starts with uppercase or is a known pattern
                     if p.strip()[0].isupper() or re.match(r"^[A-Za-z]+\.?[jJ][sS]$", p.strip()):
                         tech_count += 1
+            # At least 60% of items should look like tech names
             if tech_count / len(parts) >= 0.6:
                 return True
         return False
 
     def _extract_techs(line):
         """Extract technology names from a tech line."""
+        # Remove prefix if present
         tech_text = re.sub(r"(?i)^\s*(?:technologies|tech\s*stack|tools|built\s*with|stack|using)\s*:\s*", "", line)
         return [t.strip().rstrip(".") for t in tech_text.split(",") if t.strip() and len(t.strip()) < 30]
 
@@ -476,9 +508,9 @@ def parse_projects(text):
         """Check if a line looks like a project title."""
         stripped = line.strip()
         # Not a bullet description
-        if stripped.startswith(BULLETS):
+        if stripped.startswith(("•", "*", "·")):
             # But could be "• Project Name: description" format
-            bullet_match = re.match(r"^[•*·●]\s*(.+?):\s*(.+)", stripped)
+            bullet_match = re.match(r"^[•*·]\s*(.+?):\s*(.+)", stripped)
             if bullet_match:
                 return True
             return False
@@ -514,8 +546,8 @@ def parse_projects(text):
         if not stripped:
             continue
 
-        # Check for "• Project Name: Description" format (includes ● character)
-        bullet_title_match = re.match(r"^[•\-*·●]\s*(.+?):\s*(.+)", stripped)
+        # Check for "• Project Name: Description" format
+        bullet_title_match = re.match(r"^[•\-*·]\s*(.+?):\s*(.+)", stripped)
 
         # Check if this is a technology line
         if _is_tech_list(stripped) and current_entry:
@@ -558,7 +590,7 @@ def parse_projects(text):
 
         # Otherwise it's a description line
         if current_entry:
-            desc_line = stripped.lstrip("•-*·●–  ")
+            desc_line = stripped.lstrip("•-*·  ")
             if desc_line:
                 if current_entry["description"]:
                     current_entry["description"] += " " + desc_line

@@ -22,6 +22,15 @@ export default function Resumes() {
     listJobs().then(data => setJobs(data.jobs)).catch(() => { });
   }, []);
 
+  const fetchResumes = async () => {
+    try {
+      const data = await listResumes(selectedJobId);
+      setResumes(data.resumes);
+    } catch (err) {
+      console.error("Failed to fetch resumes:", err);
+    }
+  };
+
   // Fetch resumes when job is selected
   useEffect(() => {
     if (selectedJobId) {
@@ -36,14 +45,7 @@ export default function Resumes() {
     if (jobIdFromUrl) setSelectedJobId(jobIdFromUrl);
   }, [jobIdFromUrl]);
 
-  const fetchResumes = async () => {
-    try {
-      const data = await listResumes(selectedJobId);
-      setResumes(data.resumes);
-    } catch (err) {
-      console.error("Failed to fetch resumes:", err);
-    }
-  };
+
 
   const handleFiles = async (files) => {
     if (!selectedJobId) {

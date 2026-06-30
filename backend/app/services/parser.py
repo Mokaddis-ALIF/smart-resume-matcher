@@ -29,6 +29,29 @@ def extract_text_from_pdf(file_path):
     return text.strip()
 
 
+# def extract_text_from_docx(file_path):
+#     """Extract text from a DOCX file using python-docx."""
+#     text = ""
+#     try:
+#         doc = Document(file_path)
+#         for paragraph in doc.paragraphs:
+#             if paragraph.text.strip():
+#                 text += paragraph.text + "\n"
+
+#         # Also extract text from tables (CVs often use tables for layout)
+#         for table in doc.tables:
+#             for row in table.rows:
+#                 row_text = []
+#                 for cell in row.cells:
+#                     if cell.text.strip():
+#                         row_text.append(cell.text.strip())
+#                 if row_text:
+#                     text += " | ".join(row_text) + "\n"
+#     except Exception as e:
+#         raise Exception(f"Failed to extract text from DOCX: {str(e)}")
+
+#     return text.strip()
+
 def extract_text_from_docx(file_path):
     """Extract text from a DOCX file using python-docx."""
     text = ""
@@ -39,14 +62,14 @@ def extract_text_from_docx(file_path):
                 text += paragraph.text + "\n"
 
         # Also extract text from tables (CVs often use tables for layout)
+        seen = set()
         for table in doc.tables:
             for row in table.rows:
-                row_text = []
                 for cell in row.cells:
-                    if cell.text.strip():
-                        row_text.append(cell.text.strip())
-                if row_text:
-                    text += " | ".join(row_text) + "\n"
+                    cell_text = cell.text.strip()
+                    if cell_text and cell_text not in seen:
+                        seen.add(cell_text)
+                        text += cell_text + "\n"
     except Exception as e:
         raise Exception(f"Failed to extract text from DOCX: {str(e)}")
 
