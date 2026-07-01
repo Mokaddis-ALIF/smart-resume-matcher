@@ -11,7 +11,8 @@ import re
 # The is_section_heading() gatekeeper ensures these only match actual headings
 SECTION_PATTERNS = {
     "summary": r"(?i)\b(summary|profile|about\s*me|objective)\b",
-    "experience": r"(?i)\b(experience|employment)\b",
+    # "experience": r"(?i)\b(experience|employment)\b",
+    "experience": r"(?i)\b(experience|employment|work\s*history)\b",
     "education": r"(?i)\b(education|qualification|degree)\b",
     "skills": r"(?i)\b(skills?|competenc|technologies|tech\s*stack)\b",
     "projects": r"(?i)\bprojects?\b",

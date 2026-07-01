@@ -9,12 +9,12 @@ export default function Evaluation() {
   const [activeTab, setActiveTab] = useState("dataset1");
 
   useEffect(() => {
-    getEvaluationResults().then(setData).catch(() => {});
+    getEvaluationResults().then(setData).catch(() => { });
   }, []);
 
   const handleTrain = async () => {
     setTraining(true);
-    setMessage("Training classifiers on both datasets... this may take 1-2 minutes");
+    setMessage("Training classifiers on both datasets... this may take 2-3 minutes");
     try {
       await trainModels();
       setMessage("Training complete on both datasets");
@@ -43,8 +43,8 @@ export default function Evaluation() {
     : null;
 
   const datasetTabs = [
-    { key: "dataset1", label: "Dataset 1: Resume Text", desc: "TF-IDF on full resume text → job category" },
-    { key: "dataset2", label: "Dataset 2: Structured Features", desc: "Skills + Qualification + Experience → job role" },
+    { key: "dataset1", label: "Dataset 1: AI Resume Screening", desc: "Skills + Education + Experience + Certifications → Job Role (4 classes)" },
+    { key: "dataset2", label: "Dataset 2: Resume Data", desc: "Skills + Degree + Field + Career Objective → Job Position (28 classes)" },
   ];
 
   return (
@@ -157,7 +157,7 @@ export default function Evaluation() {
                 ))}
               </div>
 
-              {/* Timing + cross-validation */}
+              {/* Training time & CV */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
                 <div className="card">
                   <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Training Time</h3>
