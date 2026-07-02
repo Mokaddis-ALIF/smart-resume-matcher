@@ -8,6 +8,7 @@ const emptyForm = {
   preferred_skills: "",
   min_experience_years: 0,
   education_level: "none",
+  it_background_required: true,
   soft_skills: [],
 };
 
@@ -87,6 +88,7 @@ export default function Jobs() {
       preferred_skills: (job.requirements?.preferred_skills || []).join(", "),
       min_experience_years: job.requirements?.min_experience_years || 0,
       education_level: job.requirements?.education_level || "none",
+      it_background_required: job.requirements?.it_background_required !== false, // default true for old jobs
       soft_skills: job.soft_skills || [],
     });
     setShowForm(true);
@@ -108,6 +110,7 @@ export default function Jobs() {
       preferred_skills: form.preferred_skills.split(",").map(s => s.trim()).filter(Boolean),
       min_experience_years: parseInt(form.min_experience_years) || 0,
       education_level: form.education_level,
+      it_background_required: form.education_level === "none" ? true : form.it_background_required,
     },
     soft_skills: form.soft_skills,
   });
@@ -207,15 +210,15 @@ export default function Jobs() {
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
               <label style={labelStyle}>Job Title *</label>
-              <input style={inputStyle} required value={form.title} onChange={e => setForm({...form, title: e.target.value})} placeholder="e.g. Senior Python Developer" />
+              <input style={inputStyle} required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Senior Python Developer" />
             </div>
             <div>
               <label style={labelStyle}>Job Description *</label>
-              <textarea style={{...inputStyle, minHeight: 80, resize: "vertical"}} required value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Describe the role, responsibilities, and what you're looking for..." />
+              <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the role, responsibilities, and what you're looking for..." />
             </div>
             <div>
               <label style={labelStyle}>Required Technical Skills (comma separated) *</label>
-              <input style={inputStyle} required value={form.required_skills} onChange={e => setForm({...form, required_skills: e.target.value})} placeholder="e.g. Python, Flask, MongoDB, Docker" />
+              <input style={inputStyle} required value={form.required_skills} onChange={e => setForm({ ...form, required_skills: e.target.value })} placeholder="e.g. Python, Flask, MongoDB, Docker" />
               {renderSkillTags(reqValidation)}
               {unmatchedCount(reqValidation) > 0 && (
                 <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
@@ -225,38 +228,60 @@ export default function Jobs() {
             </div>
             <div>
               <label style={labelStyle}>Preferred Technical Skills (comma separated)</label>
-              <input style={inputStyle} value={form.preferred_skills} onChange={e => setForm({...form, preferred_skills: e.target.value})} placeholder="e.g. Kubernetes, AWS, Redis" />
+              <input style={inputStyle} value={form.preferred_skills} onChange={e => setForm({ ...form, preferred_skills: e.target.value })} placeholder="e.g. Kubernetes, AWS, Redis" />
               {renderSkillTags(prefValidation)}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div>
                 <label style={labelStyle}>Min. Experience (years)</label>
-                <input style={inputStyle} type="number" min="0" value={form.min_experience_years} onChange={e => setForm({...form, min_experience_years: e.target.value})} />
+                <input style={inputStyle} type="number" min="0" value={form.min_experience_years} onChange={e => setForm({ ...form, min_experience_years: e.target.value })} />
               </div>
               <div>
                 <label style={labelStyle}>Education Requirement</label>
-                <select style={inputStyle} value={form.education_level} onChange={e => setForm({...form, education_level: e.target.value})}>
+                <select style={inputStyle} value={form.education_level} onChange={e => setForm({ ...form, education_level: e.target.value })}>
                   <option value="none">None Required</option>
-                  <option value="bachelors">Bachelor's (IT-related field)</option>
-                  <option value="masters">Master's (IT-related field)</option>
-                  <option value="phd">PhD (IT-related field)</option>
+                  <option value="bachelors">Bachelor's Degree</option>
+                  <option value="masters">Master's Degree</option>
+                  <option value="phd">PhD / Doctorate</option>
                 </select>
               </div>
             </div>
+
             {form.education_level !== "none" && (
-              <div style={{
-                fontSize: 11, color: "#6b7280", padding: "8px 12px",
-                background: "#f9fafb", borderRadius: 6, lineHeight: 1.6,
-              }}>
-                <strong>IT-related fields that qualify:</strong> Computer Science, Software Engineering, Data Science,
-                Information Technology, Computer Engineering, Mathematics, Statistics, Electronics,
-                Artificial Intelligence, Cybersecurity, and similar tech fields.
-                Non-IT degrees (Finance, Arts, Business, etc.) will not satisfy this requirement.
+              <div>
+                <label style={labelStyle}>IT / Tech Background Required?</label>
+                <select
+                  style={inputStyle}
+                  value={form.it_background_required ? "yes" : "no"}
+                  onChange={e => setForm({ ...form, it_background_required: e.target.value === "yes" })}
+                >
+                  <option value="yes">Yes — degree must be in an IT or technology-related field</option>
+                  <option value="no">No — any field of study is accepted</option>
+                </select>
+                <div style={{
+                  fontSize: 11, color: "#6b7280", padding: "8px 12px", marginTop: 6,
+                  background: "#f9fafb", borderRadius: 6, lineHeight: 1.6,
+                }}>
+                  {form.it_background_required ? (
+                    <>
+                      <strong>IT fields that qualify:</strong> Computer Science, Software Engineering,
+                      Data Science, Information Technology, Computer Engineering, Mathematics, Statistics,
+                      Electronics, Artificial Intelligence, Cybersecurity, and similar tech disciplines.
+                      Candidates with non-IT degrees (Finance, Arts, Business, etc.) will score 0 for education.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Any field accepted.</strong> Scoring checks degree level only —
+                      a candidate who holds the required level (or higher) scores 100, one level below scores 60,
+                      two or more levels below scores 30, and no degree scores 0.
+                    </>
+                  )}
+                </div>
               </div>
             )}
 
             {/* Soft Skills */}
-            <div>
+            {/* <div>
               <label style={labelStyle}>Soft Skills (optional — not scored, for interview reference)</label>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
                 {softSkillOptions.map(skill => (
@@ -298,7 +323,7 @@ export default function Jobs() {
                   <button type="button" onClick={handleAddSoftSkill} className="btn btn-primary" style={{ fontSize: 13 }}>Add</button>
                 </div>
               )}
-            </div>
+            </div> */}
 
             <div style={{ display: "flex", gap: 10 }}>
               <button className="btn btn-primary" type="submit">

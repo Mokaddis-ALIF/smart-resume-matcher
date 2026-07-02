@@ -51,6 +51,7 @@ def create_job_doc(title, description, requirements, soft_skills=None, reference
             "preferred_skills": requirements.get("preferred_skills", []),
             "min_experience_years": requirements.get("min_experience_years", 0),
             "education_level": requirements.get("education_level", None),
+            "it_background_required": requirements.get("it_background_required", True),
         },
         "soft_skills": soft_skills or [],
         "weights": DEFAULT_WEIGHTS.copy(),

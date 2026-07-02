@@ -159,14 +159,22 @@ def _estimate_months(start_str, end_str):
 
 def score_education(resume_parsed, job_requirements):
     """Score how well a candidate's education matches the job requirements.
-    
-    Only IT/tech-related degrees count as valid matches.
-    Non-IT degrees get a minimal score regardless of level.
+
+    Behaviour depends on the job's it_background_required flag:
+      True  — the degree must be in an IT/tech field; non-IT degrees score 0.
+      False — only the degree level is checked; field is irrelevant.
+
+    Level scoring (both modes):
+      meets or exceeds required level  → 100
+      one level below                  → 60
+      two or more levels below         → 30
+      no degree at all                 → 0
     """
     required_level = job_requirements.get("education_level", "none")
+    it_required = job_requirements.get("it_background_required", True)
 
     if required_level == "none" or not required_level:
-        return {"score": 100.0, "required_level": "none", "candidate_level": "n/a", "field_match": True, "it_related": True}
+        return {"score": 100.0, "required_level": "none", "candidate_level": "n/a", "field_match": True, "it_related": True, "it_required": it_required}
 
     # IT-related fields — any degree in these fields counts
     IT_FIELDS = {
@@ -179,9 +187,11 @@ def score_education(resume_parsed, job_requirements):
         "web development", "mobile development", "game development",
     }
 
+    # Only bachelors / masters / phd are recognised levels.
+    # Diploma, associate, and anything else resolves to 0 (same as no degree).
     level_ranks = {
-        "none": 0, "diploma": 1, "associate": 2,
-        "bachelors": 3, "masters": 4, "phd": 5,
+        "none": 0,
+        "bachelors": 1, "masters": 2, "phd": 3,
     }
 
     degree_map = {
@@ -225,18 +235,30 @@ def score_education(resume_parsed, job_requirements):
 
     required_rank = level_ranks.get(required_level, 0)
 
-    # Scoring logic
-    if is_it_related:
-        # IT-related degree — compare levels normally
+    # Scoring logic — branches on whether the job requires an IT field
+    if it_required:
+        # IT field must match; non-IT degrees score 0 regardless of level
+        if is_it_related:
+            if highest_rank >= required_rank:
+                score = 100.0
+            elif highest_rank == required_rank - 1:
+                score = 60.0
+            else:
+                score = 30.0
+        else:
+            score = 0.0
+    else:
+        # Any field accepted — score purely on degree level
         if highest_rank >= required_rank:
             score = 100.0
         elif highest_rank == required_rank - 1:
             score = 60.0
-        else:
+        elif highest_rank > 0:
+            # Has some degree but two or more levels below requirement
             score = 30.0
-    else:
-        # Non-IT degree — does not satisfy the requirement at all
-        score = 0.0
+        else:
+            # No degree detected at all
+            score = 0.0
 
     return {
         "score": round(score, 1),
@@ -245,6 +267,7 @@ def score_education(resume_parsed, job_requirements):
         "candidate_field": candidate_field,
         "field_match": is_it_related,
         "it_related": is_it_related,
+        "it_required": it_required,
     }
 
 

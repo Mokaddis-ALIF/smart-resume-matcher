@@ -16,6 +16,9 @@ frontend/build/
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# Claude
+CLAUDE.md
+
 # IDE
 .vscode/
 .idea/
