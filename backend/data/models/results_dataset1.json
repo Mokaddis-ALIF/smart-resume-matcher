@@ -1,0 +1,582 @@
+{
+  "dataset_name": "AI Resume Screening Dataset",
+  "dataset_size": 1000,
+  "train_size": 800,
+  "test_size": 200,
+  "feature_count": 138,
+  "categories": [
+    "AI Researcher",
+    "Cybersecurity Analyst",
+    "Data Scientist",
+    "Software Engineer"
+  ],
+  "approach": "Skills + Education + Experience (Years) + Certifications -> TF-IDF (3000 features, bigrams)",
+  "results": {
+    "SVM": {
+      "accuracy": 100.0,
+      "f1_score": 100.0,
+      "macro_f1": 100.0,
+      "precision": 100.0,
+      "recall": 100.0,
+      "macro_precision": 100.0,
+      "macro_recall": 100.0,
+      "cv_mean_accuracy": 100.0,
+      "cv_std": 0.0,
+      "cv_scores": [
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0
+      ],
+      "train_time_seconds": 0.278,
+      "predict_time_seconds": 0.0104,
+      "confusion_matrix": [
+        [
+          51,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          51,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          51,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          47
+        ]
+      ],
+      "per_class_report": {
+        "AI Researcher": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Cybersecurity Analyst": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Data Scientist": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Software Engineer": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 47
+        }
+      }
+    },
+    "Random Forest": {
+      "accuracy": 100.0,
+      "f1_score": 100.0,
+      "macro_f1": 100.0,
+      "precision": 100.0,
+      "recall": 100.0,
+      "macro_precision": 100.0,
+      "macro_recall": 100.0,
+      "cv_mean_accuracy": 100.0,
+      "cv_std": 0.0,
+      "cv_scores": [
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0
+      ],
+      "train_time_seconds": 0.715,
+      "predict_time_seconds": 0.0359,
+      "confusion_matrix": [
+        [
+          51,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          51,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          51,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          47
+        ]
+      ],
+      "per_class_report": {
+        "AI Researcher": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Cybersecurity Analyst": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Data Scientist": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Software Engineer": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 47
+        }
+      }
+    },
+    "KNN": {
+      "accuracy": 99.0,
+      "f1_score": 99.0,
+      "macro_f1": 99.0,
+      "precision": 99.01,
+      "recall": 99.0,
+      "macro_precision": 98.99,
+      "macro_recall": 99.02,
+      "cv_mean_accuracy": 98.6,
+      "cv_std": 0.8,
+      "cv_scores": [
+        98.49,
+        98.54,
+        97.48,
+        98.52,
+        100.0
+      ],
+      "train_time_seconds": 0.003,
+      "predict_time_seconds": 0.0154,
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          51,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          50,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          47
+        ]
+      ],
+      "per_class_report": {
+        "AI Researcher": {
+          "precision": 100.0,
+          "recall": 98.04,
+          "f1_score": 99.01,
+          "support": 51
+        },
+        "Cybersecurity Analyst": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Data Scientist": {
+          "precision": 98.04,
+          "recall": 98.04,
+          "f1_score": 98.04,
+          "support": 51
+        },
+        "Software Engineer": {
+          "precision": 97.92,
+          "recall": 100.0,
+          "f1_score": 98.95,
+          "support": 47
+        }
+      }
+    },
+    "Naive Bayes": {
+      "accuracy": 100.0,
+      "f1_score": 100.0,
+      "macro_f1": 100.0,
+      "precision": 100.0,
+      "recall": 100.0,
+      "macro_precision": 100.0,
+      "macro_recall": 100.0,
+      "cv_mean_accuracy": 99.9,
+      "cv_std": 0.21,
+      "cv_scores": [
+        100.0,
+        99.48,
+        100.0,
+        100.0,
+        100.0
+      ],
+      "train_time_seconds": 0.008,
+      "predict_time_seconds": 0.0009,
+      "confusion_matrix": [
+        [
+          51,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          51,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          51,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          47
+        ]
+      ],
+      "per_class_report": {
+        "AI Researcher": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Cybersecurity Analyst": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Data Scientist": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 51
+        },
+        "Software Engineer": {
+          "precision": 100.0,
+          "recall": 100.0,
+          "f1_score": 100.0,
+          "support": 47
+        }
+      }
+    }
+  },
+  "top_features": {
+    "SVM": {
+      "AI Researcher": [
+        {
+          "feature": "10",
+          "weight": 0.0447
+        }
+      ],
+      "Cybersecurity Analyst": [
+        {
+          "feature": "10",
+          "weight": -0.0334
+        }
+      ],
+      "Data Scientist": [
+        {
+          "feature": "10",
+          "weight": -0.0233
+        }
+      ],
+      "Software Engineer": [
+        {
+          "feature": "10",
+          "weight": -0.0466
+        }
+      ]
+    },
+    "Naive Bayes": {
+      "AI Researcher": [
+        {
+          "feature": "tensorflow",
+          "weight": -2.9338
+        },
+        {
+          "feature": "pytorch",
+          "weight": -2.9603
+        },
+        {
+          "feature": "nlp",
+          "weight": -2.9769
+        },
+        {
+          "feature": "python",
+          "weight": -3.2717
+        },
+        {
+          "feature": "pytorch tensorflow",
+          "weight": -3.7749
+        },
+        {
+          "feature": "tensorflow nlp",
+          "weight": -3.8069
+        },
+        {
+          "feature": "tech",
+          "weight": -3.8838
+        },
+        {
+          "feature": "python nlp",
+          "weight": -3.8909
+        },
+        {
+          "feature": "nlp pytorch",
+          "weight": -3.9129
+        },
+        {
+          "feature": "tensorflow python",
+          "weight": -3.9599
+        },
+        {
+          "feature": "pytorch python",
+          "weight": -3.9932
+        },
+        {
+          "feature": "aws certified",
+          "weight": -3.997
+        },
+        {
+          "feature": "certified",
+          "weight": -3.997
+        },
+        {
+          "feature": "aws",
+          "weight": -3.997
+        },
+        {
+          "feature": "nlp python",
+          "weight": -3.9983
+        }
+      ],
+      "Cybersecurity Analyst": [
+        {
+          "feature": "ethical hacking",
+          "weight": -3.0373
+        },
+        {
+          "feature": "hacking",
+          "weight": -3.0373
+        },
+        {
+          "feature": "ethical",
+          "weight": -3.0373
+        },
+        {
+          "feature": "networking",
+          "weight": -3.0528
+        },
+        {
+          "feature": "cybersecurity",
+          "weight": -3.0617
+        },
+        {
+          "feature": "linux",
+          "weight": -3.0724
+        },
+        {
+          "feature": "cybersecurity ethical",
+          "weight": -3.8299
+        },
+        {
+          "feature": "hacking linux",
+          "weight": -3.9155
+        },
+        {
+          "feature": "networking linux",
+          "weight": -3.9493
+        },
+        {
+          "feature": "tech",
+          "weight": -3.9581
+        },
+        {
+          "feature": "hacking networking",
+          "weight": -4.0614
+        },
+        {
+          "feature": "cybersecurity networking",
+          "weight": -4.0646
+        },
+        {
+          "feature": "networking cybersecurity",
+          "weight": -4.0793
+        },
+        {
+          "feature": "linux cybersecurity",
+          "weight": -4.1111
+        },
+        {
+          "feature": "networking ethical",
+          "weight": -4.1428
+        }
+      ],
+      "Data Scientist": [
+        {
+          "feature": "learning",
+          "weight": -2.6192
+        },
+        {
+          "feature": "machine",
+          "weight": -3.0565
+        },
+        {
+          "feature": "machine learning",
+          "weight": -3.0565
+        },
+        {
+          "feature": "deep learning",
+          "weight": -3.1488
+        },
+        {
+          "feature": "deep",
+          "weight": -3.1488
+        },
+        {
+          "feature": "sql",
+          "weight": -3.3201
+        },
+        {
+          "feature": "python",
+          "weight": -3.3274
+        },
+        {
+          "feature": "learning python",
+          "weight": -3.5395
+        },
+        {
+          "feature": "learning tech",
+          "weight": -3.6959
+        },
+        {
+          "feature": "learning sql",
+          "weight": -3.7469
+        },
+        {
+          "feature": "tech",
+          "weight": -3.8236
+        },
+        {
+          "feature": "sql machine",
+          "weight": -3.8904
+        },
+        {
+          "feature": "python deep",
+          "weight": -3.9552
+        },
+        {
+          "feature": "python sql",
+          "weight": -3.9555
+        },
+        {
+          "feature": "python machine",
+          "weight": -4.0237
+        }
+      ],
+      "Software Engineer": [
+        {
+          "feature": "java",
+          "weight": -2.7713
+        },
+        {
+          "feature": "react",
+          "weight": -2.8467
+        },
+        {
+          "feature": "sql",
+          "weight": -3.0724
+        },
+        {
+          "feature": "sql java",
+          "weight": -3.4227
+        },
+        {
+          "feature": "react sql",
+          "weight": -3.5289
+        },
+        {
+          "feature": "java react",
+          "weight": -3.6534
+        },
+        {
+          "feature": "tech",
+          "weight": -3.664
+        },
+        {
+          "feature": "java sql",
+          "weight": -3.71
+        },
+        {
+          "feature": "java tech",
+          "weight": -3.8868
+        },
+        {
+          "feature": "specialization",
+          "weight": -3.8875
+        },
+        {
+          "feature": "learning specialization",
+          "weight": -3.8875
+        },
+        {
+          "feature": "sql tech",
+          "weight": -3.9209
+        },
+        {
+          "feature": "react java",
+          "weight": -3.9238
+        },
+        {
+          "feature": "aws",
+          "weight": -3.9616
+        },
+        {
+          "feature": "aws certified",
+          "weight": -3.9616
+        }
+      ]
+    }
+  }
+}

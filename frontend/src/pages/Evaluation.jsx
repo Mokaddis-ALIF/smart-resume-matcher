@@ -14,7 +14,7 @@ export default function Evaluation() {
 
   const handleTrain = async () => {
     setTraining(true);
-    setMessage("Training classifiers on both datasets... this may take 2-3 minutes");
+    setMessage("Training classifiers on both datasets (D1 + D2 raw + D2 clean + leakage check)… this may take 5-8 minutes");
     try {
       await trainModels();
       setMessage("Training complete on both datasets");
@@ -44,7 +44,7 @@ export default function Evaluation() {
 
   const datasetTabs = [
     { key: "dataset1", label: "Dataset 1: AI Resume Screening", desc: "Skills + Education + Experience + Certifications → Job Role (4 classes)" },
-    { key: "dataset2", label: "Dataset 2: Resume Data", desc: "Skills + Degree + Field + Career Objective → Job Position (28 classes)" },
+    { key: "dataset2", label: "Dataset 2: Resume Dataset 2", desc: "Resume_Text -> Job Role (5 classes) — raw variant shown; leakage analysis available" },
   ];
 
   return (

@@ -1,0 +1,721 @@
+{
+  "dataset_name": "Resume Dataset 2 (clean)",
+  "variant": "clean",
+  "dataset_size": 815,
+  "train_size": 652,
+  "test_size": 163,
+  "feature_count": 4990,
+  "categories": [
+    "Data Scientist",
+    "Financial Analyst",
+    "HR Executive",
+    "Marketing Manager",
+    "Software Engineer"
+  ],
+  "role_strings_removed": true,
+  "approach": "Resume_Text -> TF-IDF (5000 features, bigrams) [role strings removed]",
+  "results": {
+    "SVM": {
+      "accuracy": 72.39,
+      "f1_score": 70.74,
+      "macro_f1": 67.7,
+      "precision": 75.66,
+      "recall": 72.39,
+      "macro_precision": 79.36,
+      "macro_recall": 62.74,
+      "cv_mean_accuracy": 65.68,
+      "cv_std": 3.12,
+      "cv_scores": [
+        61.93,
+        63.98,
+        63.76,
+        68.66,
+        70.06
+      ],
+      "train_time_seconds": 3.033,
+      "predict_time_seconds": 0.0941,
+      "confusion_matrix": [
+        [
+          10,
+          2,
+          3,
+          0,
+          10
+        ],
+        [
+          2,
+          13,
+          0,
+          1,
+          6
+        ],
+        [
+          0,
+          0,
+          16,
+          0,
+          10
+        ],
+        [
+          1,
+          0,
+          1,
+          12,
+          8
+        ],
+        [
+          0,
+          1,
+          0,
+          0,
+          67
+        ]
+      ],
+      "per_class_report": {
+        "Data Scientist": {
+          "precision": 76.92,
+          "recall": 40.0,
+          "f1_score": 52.63,
+          "support": 25
+        },
+        "Financial Analyst": {
+          "precision": 81.25,
+          "recall": 59.09,
+          "f1_score": 68.42,
+          "support": 22
+        },
+        "HR Executive": {
+          "precision": 80.0,
+          "recall": 61.54,
+          "f1_score": 69.57,
+          "support": 26
+        },
+        "Marketing Manager": {
+          "precision": 92.31,
+          "recall": 54.55,
+          "f1_score": 68.57,
+          "support": 22
+        },
+        "Software Engineer": {
+          "precision": 66.34,
+          "recall": 98.53,
+          "f1_score": 79.29,
+          "support": 68
+        }
+      }
+    },
+    "Random Forest": {
+      "accuracy": 45.4,
+      "f1_score": 38.93,
+      "macro_f1": 32.42,
+      "precision": 49.19,
+      "recall": 45.4,
+      "macro_precision": 51.11,
+      "macro_recall": 31.33,
+      "cv_mean_accuracy": 32.8,
+      "cv_std": 1.23,
+      "cv_scores": [
+        33.61,
+        31.84,
+        31.29,
+        34.7,
+        32.55
+      ],
+      "train_time_seconds": 3.299,
+      "predict_time_seconds": 0.0459,
+      "confusion_matrix": [
+        [
+          3,
+          0,
+          1,
+          0,
+          21
+        ],
+        [
+          0,
+          2,
+          0,
+          1,
+          19
+        ],
+        [
+          0,
+          0,
+          4,
+          0,
+          22
+        ],
+        [
+          0,
+          1,
+          0,
+          8,
+          13
+        ],
+        [
+          2,
+          4,
+          2,
+          3,
+          57
+        ]
+      ],
+      "per_class_report": {
+        "Data Scientist": {
+          "precision": 60.0,
+          "recall": 12.0,
+          "f1_score": 20.0,
+          "support": 25
+        },
+        "Financial Analyst": {
+          "precision": 28.57,
+          "recall": 9.09,
+          "f1_score": 13.79,
+          "support": 22
+        },
+        "HR Executive": {
+          "precision": 57.14,
+          "recall": 15.38,
+          "f1_score": 24.24,
+          "support": 26
+        },
+        "Marketing Manager": {
+          "precision": 66.67,
+          "recall": 36.36,
+          "f1_score": 47.06,
+          "support": 22
+        },
+        "Software Engineer": {
+          "precision": 43.18,
+          "recall": 83.82,
+          "f1_score": 57.0,
+          "support": 68
+        }
+      }
+    },
+    "KNN": {
+      "accuracy": 73.01,
+      "f1_score": 72.05,
+      "macro_f1": 68.87,
+      "precision": 73.6,
+      "recall": 73.01,
+      "macro_precision": 74.68,
+      "macro_recall": 65.47,
+      "cv_mean_accuracy": 64.64,
+      "cv_std": 2.99,
+      "cv_scores": [
+        61.6,
+        60.63,
+        65.65,
+        67.33,
+        67.98
+      ],
+      "train_time_seconds": 0.003,
+      "predict_time_seconds": 0.018,
+      "confusion_matrix": [
+        [
+          12,
+          2,
+          2,
+          0,
+          9
+        ],
+        [
+          4,
+          12,
+          0,
+          1,
+          5
+        ],
+        [
+          1,
+          0,
+          19,
+          1,
+          5
+        ],
+        [
+          1,
+          0,
+          1,
+          13,
+          7
+        ],
+        [
+          2,
+          2,
+          0,
+          1,
+          63
+        ]
+      ],
+      "per_class_report": {
+        "Data Scientist": {
+          "precision": 60.0,
+          "recall": 48.0,
+          "f1_score": 53.33,
+          "support": 25
+        },
+        "Financial Analyst": {
+          "precision": 75.0,
+          "recall": 54.55,
+          "f1_score": 63.16,
+          "support": 22
+        },
+        "HR Executive": {
+          "precision": 86.36,
+          "recall": 73.08,
+          "f1_score": 79.17,
+          "support": 26
+        },
+        "Marketing Manager": {
+          "precision": 81.25,
+          "recall": 59.09,
+          "f1_score": 68.42,
+          "support": 22
+        },
+        "Software Engineer": {
+          "precision": 70.79,
+          "recall": 92.65,
+          "f1_score": 80.25,
+          "support": 68
+        }
+      }
+    },
+    "Naive Bayes": {
+      "accuracy": 68.71,
+      "f1_score": 66.42,
+      "macro_f1": 62.92,
+      "precision": 74.86,
+      "recall": 68.71,
+      "macro_precision": 80.09,
+      "macro_recall": 57.06,
+      "cv_mean_accuracy": 58.45,
+      "cv_std": 2.23,
+      "cv_scores": [
+        55.23,
+        56.82,
+        58.84,
+        59.73,
+        61.62
+      ],
+      "train_time_seconds": 0.006,
+      "predict_time_seconds": 0.0008,
+      "confusion_matrix": [
+        [
+          9,
+          2,
+          2,
+          0,
+          12
+        ],
+        [
+          2,
+          10,
+          0,
+          1,
+          9
+        ],
+        [
+          0,
+          0,
+          14,
+          0,
+          12
+        ],
+        [
+          0,
+          0,
+          1,
+          11,
+          10
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          68
+        ]
+      ],
+      "per_class_report": {
+        "Data Scientist": {
+          "precision": 81.82,
+          "recall": 36.0,
+          "f1_score": 50.0,
+          "support": 25
+        },
+        "Financial Analyst": {
+          "precision": 83.33,
+          "recall": 45.45,
+          "f1_score": 58.82,
+          "support": 22
+        },
+        "HR Executive": {
+          "precision": 82.35,
+          "recall": 53.85,
+          "f1_score": 65.12,
+          "support": 26
+        },
+        "Marketing Manager": {
+          "precision": 91.67,
+          "recall": 50.0,
+          "f1_score": 64.71,
+          "support": 22
+        },
+        "Software Engineer": {
+          "precision": 61.26,
+          "recall": 100.0,
+          "f1_score": 75.98,
+          "support": 68
+        }
+      }
+    }
+  },
+  "top_features": {
+    "SVM": {
+      "Data Scientist": [
+        {
+          "feature": "0044492005",
+          "weight": 0.0
+        }
+      ],
+      "Financial Analyst": [
+        {
+          "feature": "0044492005",
+          "weight": 0.0
+        }
+      ],
+      "HR Executive": [
+        {
+          "feature": "0044492005",
+          "weight": -0.0147
+        }
+      ],
+      "Marketing Manager": [
+        {
+          "feature": "0044492005",
+          "weight": 0.0
+        }
+      ],
+      "Software Engineer": [
+        {
+          "feature": "0044492005",
+          "weight": 0.0
+        }
+      ]
+    },
+    "Naive Bayes": {
+      "Data Scientist": [
+        {
+          "feature": "experience",
+          "weight": -6.6034
+        },
+        {
+          "feature": "projects",
+          "weight": -6.8475
+        },
+        {
+          "feature": "scikit",
+          "weight": -6.9272
+        },
+        {
+          "feature": "scikit learn",
+          "weight": -6.9272
+        },
+        {
+          "feature": "learn",
+          "weight": -6.9272
+        },
+        {
+          "feature": "statistics",
+          "weight": -6.965
+        },
+        {
+          "feature": "nlp",
+          "weight": -7.0017
+        },
+        {
+          "feature": "tensorflow",
+          "weight": -7.023
+        },
+        {
+          "feature": "visualization",
+          "weight": -7.0353
+        },
+        {
+          "feature": "data",
+          "weight": -7.0545
+        },
+        {
+          "feature": "sql",
+          "weight": -7.0929
+        },
+        {
+          "feature": "numpy",
+          "weight": -7.0974
+        },
+        {
+          "feature": "pandas",
+          "weight": -7.0995
+        },
+        {
+          "feature": "working",
+          "weight": -7.2009
+        },
+        {
+          "feature": "experience working",
+          "weight": -7.2009
+        }
+      ],
+      "Financial Analyst": [
+        {
+          "feature": "experience",
+          "weight": -6.764
+        },
+        {
+          "feature": "financial",
+          "weight": -6.8492
+        },
+        {
+          "feature": "modeling",
+          "weight": -6.8492
+        },
+        {
+          "feature": "financial modeling",
+          "weight": -6.8492
+        },
+        {
+          "feature": "projects",
+          "weight": -6.8757
+        },
+        {
+          "feature": "forecasting",
+          "weight": -6.9027
+        },
+        {
+          "feature": "risk",
+          "weight": -6.9185
+        },
+        {
+          "feature": "budgeting",
+          "weight": -6.9345
+        },
+        {
+          "feature": "accounting",
+          "weight": -6.9797
+        },
+        {
+          "feature": "tableau",
+          "weight": -7.0215
+        },
+        {
+          "feature": "excel",
+          "weight": -7.061
+        },
+        {
+          "feature": "risk analysis",
+          "weight": -7.0629
+        },
+        {
+          "feature": "analysis",
+          "weight": -7.0629
+        },
+        {
+          "feature": "power",
+          "weight": -7.1048
+        },
+        {
+          "feature": "power bi",
+          "weight": -7.1048
+        }
+      ],
+      "HR Executive": [
+        {
+          "feature": "experience",
+          "weight": -6.6022
+        },
+        {
+          "feature": "projects",
+          "weight": -6.7884
+        },
+        {
+          "feature": "hr",
+          "weight": -6.7996
+        },
+        {
+          "feature": "onboarding",
+          "weight": -6.8255
+        },
+        {
+          "feature": "performance",
+          "weight": -6.8295
+        },
+        {
+          "feature": "policies",
+          "weight": -6.8381
+        },
+        {
+          "feature": "hr policies",
+          "weight": -6.8381
+        },
+        {
+          "feature": "recruitment",
+          "weight": -6.8532
+        },
+        {
+          "feature": "performance management",
+          "weight": -6.8886
+        },
+        {
+          "feature": "payroll",
+          "weight": -6.896
+        },
+        {
+          "feature": "compliance",
+          "weight": -6.9236
+        },
+        {
+          "feature": "talent",
+          "weight": -6.9266
+        },
+        {
+          "feature": "employee",
+          "weight": -6.9335
+        },
+        {
+          "feature": "acquisition",
+          "weight": -6.9476
+        },
+        {
+          "feature": "talent acquisition",
+          "weight": -6.9476
+        }
+      ],
+      "Marketing Manager": [
+        {
+          "feature": "experience",
+          "weight": -6.6942
+        },
+        {
+          "feature": "branding",
+          "weight": -6.9278
+        },
+        {
+          "feature": "market",
+          "weight": -6.965
+        },
+        {
+          "feature": "campaign",
+          "weight": -6.9848
+        },
+        {
+          "feature": "market research",
+          "weight": -6.9854
+        },
+        {
+          "feature": "research",
+          "weight": -6.9854
+        },
+        {
+          "feature": "projects",
+          "weight": -6.9905
+        },
+        {
+          "feature": "campaign management",
+          "weight": -7.0073
+        },
+        {
+          "feature": "social",
+          "weight": -7.0174
+        },
+        {
+          "feature": "media",
+          "weight": -7.0687
+        },
+        {
+          "feature": "social media",
+          "weight": -7.0687
+        },
+        {
+          "feature": "management",
+          "weight": -7.1579
+        },
+        {
+          "feature": "lead generation",
+          "weight": -7.1723
+        },
+        {
+          "feature": "lead",
+          "weight": -7.1723
+        },
+        {
+          "feature": "generation",
+          "weight": -7.1723
+        }
+      ],
+      "Software Engineer": [
+        {
+          "feature": "experience",
+          "weight": -5.7298
+        },
+        {
+          "feature": "projects",
+          "weight": -5.9792
+        },
+        {
+          "feature": "docker",
+          "weight": -6.1669
+        },
+        {
+          "feature": "oop",
+          "weight": -6.1759
+        },
+        {
+          "feature": "git",
+          "weight": -6.1805
+        },
+        {
+          "feature": "microservices",
+          "weight": -6.1872
+        },
+        {
+          "feature": "kubernetes",
+          "weight": -6.1962
+        },
+        {
+          "feature": "api",
+          "weight": -6.2107
+        },
+        {
+          "feature": "rest api",
+          "weight": -6.2107
+        },
+        {
+          "feature": "rest",
+          "weight": -6.2107
+        },
+        {
+          "feature": "boot",
+          "weight": -6.2565
+        },
+        {
+          "feature": "spring boot",
+          "weight": -6.2565
+        },
+        {
+          "feature": "spring",
+          "weight": -6.2565
+        },
+        {
+          "feature": "java",
+          "weight": -6.2914
+        },
+        {
+          "feature": "work",
+          "weight": -6.4209
+        }
+      ]
+    }
+  }
+}
