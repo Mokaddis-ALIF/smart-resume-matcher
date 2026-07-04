@@ -16,7 +16,7 @@ frontend/build/
 backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Claude
+# Claude file
 CLAUDE.md
 
 # IDE
