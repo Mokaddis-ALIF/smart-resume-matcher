@@ -352,16 +352,21 @@ export default function Jobs() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {jobs.map(job => (
-            <div key={job._id} className="card">
+            <div key={job._id} className="card card-hover" style={{ borderLeft: "4px solid #4f46e5", padding: "16px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                     {job.reference && (
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 4, background: "#f3f4f6", color: "#6b7280", fontWeight: 600, fontFamily: "monospace" }}>
+                      <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 5, background: "#f1f5f9", color: "#475569", fontWeight: 700, fontFamily: "monospace", border: "1px solid #e2e8f0" }}>
                         {job.reference}
                       </span>
                     )}
-                    <h3 style={{ fontSize: 15, fontWeight: 600 }}>{job.title}</h3>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{job.title}</h3>
+                    {job.matched_count > 0 && (
+                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: "#d1fae5", color: "#059669", fontWeight: 600, border: "1px solid #6ee7b7" }}>
+                        {job.matched_count} matched
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {job.requirements?.required_skills?.map((skill, i) => (
@@ -380,12 +385,9 @@ export default function Jobs() {
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                  <a href={`/resumes?job=${job._id}`} className="btn btn-primary" style={{ textDecoration: "none", fontSize: 13 }}>Upload CVs</a>
-                  <button onClick={() => openEditForm(job)} style={{
-                    padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500,
-                    border: "1px solid #d1d5db", background: "#fff", color: "#374151", cursor: "pointer",
-                  }}>✏️ Edit</button>
-                  <button className="btn btn-danger" style={{ fontSize: 13 }} onClick={() => handleDelete(job._id)}>Delete</button>
+                  <a href={`/resumes?job=${job._id}`} className="btn btn-primary" style={{ textDecoration: "none", fontSize: 12.5 }}>📤 Upload CVs</a>
+                  <button onClick={() => openEditForm(job)} className="btn btn-secondary" style={{ fontSize: 12.5 }}>✏️ Edit</button>
+                  <button className="btn btn-danger" style={{ fontSize: 12.5 }} onClick={() => handleDelete(job._id)}>Delete</button>
                 </div>
               </div>
             </div>
@@ -396,5 +398,5 @@ export default function Jobs() {
   );
 }
 
-const labelStyle = { display: "block", fontSize: 13, fontWeight: 500, color: "#374151", marginBottom: 4 };
-const inputStyle = { width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14, fontFamily: "inherit", outline: "none" };
+const labelStyle = { display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.04em" };
+const inputStyle = { width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13.5, fontFamily: "inherit", outline: "none", color: "#0f172a", background: "#fff", transition: "border-color 0.13s, box-shadow 0.13s" };

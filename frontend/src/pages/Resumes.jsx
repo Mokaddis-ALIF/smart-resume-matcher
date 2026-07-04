@@ -140,22 +140,22 @@ export default function Resumes() {
     <div>
       <div className="page-header">
         <h2>Resumes</h2>
-        <p>Upload and manage candidate CVs</p>
+        <p>Upload and manage candidate CVs for each job posting</p>
       </div>
 
       {/* Job selector */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 13, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-          Select a Job Posting
+        <label style={{ fontSize: 11, fontWeight: 600, color: "#475569", display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Select Job Posting
         </label>
         <select
-          style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}
+          className="input"
           value={selectedJobId}
           onChange={e => setSelectedJobId(e.target.value)}
         >
-          <option value="">-- Choose a job --</option>
+          <option value="">— Choose a job posting to upload CVs —</option>
           {jobs.map(job => (
-            <option key={job._id} value={job._id}>{job.reference ? `${job.reference}: ` : ""}{job.title}</option>
+            <option key={job._id} value={job._id}>{job.reference ? `${job.reference}  ` : ""}{job.title}</option>
           ))}
         </select>
       </div>
@@ -164,15 +164,15 @@ export default function Resumes() {
         <>
           {/* Upload zone */}
           <div
-            className="card"
             style={{
               marginBottom: 16,
-              border: dragActive ? "2px dashed #4f46e5" : "2px dashed #d1d5db",
-              background: dragActive ? "#eef2ff" : "#fafafa",
+              border: dragActive ? "2px dashed #4f46e5" : "2px dashed #cbd5e1",
+              background: dragActive ? "#eef2ff" : "#f8fafc",
               textAlign: "center",
-              padding: 40,
+              padding: "36px 24px",
               cursor: "pointer",
               transition: "all 0.15s ease",
+              borderRadius: 14,
             }}
             onDragOver={e => { e.preventDefault(); setDragActive(true); }}
             onDragLeave={() => setDragActive(false)}
@@ -187,13 +187,24 @@ export default function Resumes() {
               style={{ display: "none" }}
               onChange={e => handleFiles(e.target.files)}
             />
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
-            <p style={{ fontSize: 15, fontWeight: 500, color: "#374151", marginBottom: 4 }}>
-              {uploading ? "Processing..." : "Drop CV files here or click to browse"}
+            <div style={{ fontSize: 42, marginBottom: 10, opacity: uploading ? 0.5 : 1 }}>
+              {uploading ? "⏳" : dragActive ? "📥" : "📤"}
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
+              {uploading ? "Processing files..." : dragActive ? "Drop files to upload" : "Drop CV files here or click to browse"}
             </p>
-            <p style={{ fontSize: 12, color: "#9ca3af" }}>Accepts PDF, DOC, DOCX — multiple files supported</p>
+            <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
+              Supports PDF, DOC, DOCX — multiple files supported
+            </p>
+            {!uploading && !dragActive && (
+              <span style={{ display: "inline-block", marginTop: 8, fontSize: 12, padding: "5px 16px", borderRadius: 20, background: "#4f46e5", color: "#fff", fontWeight: 600 }}>
+                Choose Files
+              </span>
+            )}
             {uploadProgress && (
-              <p style={{ fontSize: 13, color: "#4f46e5", marginTop: 12, fontWeight: 500 }}>{uploadProgress}</p>
+              <div style={{ fontSize: 13, color: "#4f46e5", marginTop: 14, fontWeight: 600, padding: "8px 16px", background: "#eef2ff", borderRadius: 8, display: "inline-block" }}>
+                {uploadProgress}
+              </div>
             )}
           </div>
 

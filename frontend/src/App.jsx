@@ -7,37 +7,45 @@ import Evaluation from "./pages/Evaluation";
 import Taxonomy from "./pages/Taxonomy";
 import "./App.css";
 
-function Sidebar() {
-  const links = [
-    { to: "/", label: "Dashboard", icon: "📊" },
-    { to: "/jobs", label: "Jobs", icon: "💼" },
-    { to: "/resumes", label: "Resumes", icon: "📄" },
-    { to: "/results", label: "Results", icon: "✅" },
-    { to: "/evaluation", label: "Evaluation", icon: "📈" },
-    { to: "/taxonomy", label: "Taxonomy", icon: "🏷️" },
-  ];
+const NAV_LINKS = [
+  { to: "/",          label: "Dashboard",  icon: "📊", end: true },
+  { to: "/jobs",      label: "Jobs",       icon: "💼" },
+  { to: "/resumes",   label: "Resumes",    icon: "📄" },
+  { to: "/results",   label: "Results",    icon: "🏆" },
+  { to: "/evaluation",label: "Evaluation", icon: "📈" },
+  { to: "/taxonomy",  label: "Taxonomy",   icon: "🏷️" },
+];
 
+function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h1>ResumeAI</h1>
-        <span className="sidebar-subtitle">Smart Resume Matcher</span>
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">🤖</div>
+          <h1>ResumeAI</h1>
+        </div>
+        <span className="sidebar-subtitle">Smart Hiring Platform</span>
       </div>
+
+      <div className="sidebar-section-label">Navigation</div>
+
       <nav className="sidebar-nav">
-        {links.map((link) => (
+        {NAV_LINKS.map(link => (
           <NavLink
             key={link.to}
             to={link.to}
-            end={link.to === "/"}
-            className={({ isActive }) =>
-              `nav-link ${isActive ? "nav-link-active" : ""}`
-            }
+            end={link.end}
+            className={({ isActive }) => `nav-link${isActive ? " nav-link-active" : ""}`}
           >
             <span className="nav-icon">{link.icon}</span>
             {link.label}
           </NavLink>
         ))}
       </nav>
+
+      <div className="sidebar-footer">
+        Smart Resume Matcher v1.0
+      </div>
     </aside>
   );
 }
@@ -49,12 +57,12 @@ export default function App() {
         <Sidebar />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/jobs" element={<Jobs />} />
-            <Route path="/resumes" element={<Resumes />} />
-            <Route path="/results" element={<Results />} />
+            <Route path="/"           element={<Dashboard />} />
+            <Route path="/jobs"       element={<Jobs />} />
+            <Route path="/resumes"    element={<Resumes />} />
+            <Route path="/results"    element={<Results />} />
             <Route path="/evaluation" element={<Evaluation />} />
-            <Route path="/taxonomy" element={<Taxonomy />} />
+            <Route path="/taxonomy"   element={<Taxonomy />} />
           </Routes>
         </main>
       </div>
