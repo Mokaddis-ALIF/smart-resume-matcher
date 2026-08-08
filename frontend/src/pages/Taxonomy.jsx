@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getTaxonomy, addTaxonomySkill, updateTaxonomySkill, deleteTaxonomySkill, getTaxonomyCategories } from "../services/api";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const catColors = {
   language: { bg: "#eef2ff", text: "#4338ca" },
@@ -23,6 +24,8 @@ export default function Taxonomy() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingSkill, setEditingSkill] = useState(null);
   const [form, setForm] = useState({ name: "", category: "tool", aliases: "" });
+  const [skillToDelete, setSkillToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -84,18 +87,36 @@ export default function Taxonomy() {
     }
   };
 
-  const handleDelete = async (skill) => {
-    if (!window.confirm(`Delete "${skill.name}" from the taxonomy?`)) return;
+  const confirmDeleteSkill = async () => {
+    if (!skillToDelete) return;
+    setDeleting(true);
     try {
-      await deleteTaxonomySkill(skill.id);
+      await deleteTaxonomySkill(skillToDelete.id);
+      setSkillToDelete(null);
       fetchData();
     } catch (err) {
       alert(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
   return (
     <div>
+      <ConfirmDialog
+        open={!!skillToDelete}
+        busy={deleting}
+        title="Delete skill?"
+        message={
+          <>
+            Remove <strong>{skillToDelete?.name}</strong> from the taxonomy? CVs will no longer
+            match against this skill or its aliases.
+          </>
+        }
+        confirmLabel="Delete Skill"
+        onConfirm={confirmDeleteSkill}
+        onCancel={() => setSkillToDelete(null)}
+      />
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h2>Skill Taxonomy</h2>
@@ -190,7 +211,7 @@ export default function Taxonomy() {
                 >
                   {skill.name}
                   <span
-                    onClick={e => { e.stopPropagation(); handleDelete(skill); }}
+                    onClick={e => { e.stopPropagation(); setSkillToDelete(skill); }}
                     style={{ fontSize: 10, color: "#dc2626", cursor: "pointer", opacity: 0.5 }}
                     title="Delete"
                   >✕</span>

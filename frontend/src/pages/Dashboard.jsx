@@ -3,15 +3,15 @@ import { Link } from "react-router-dom";
 import { checkHealth, listJobs, getEvaluationResults } from "../services/api";
 
 const STEPS = [
-  { num: "1", icon: "💼", title: "Post a Job",     desc: "Define the role, required skills, and experience",  to: "/jobs",    cta: "Go to Jobs" },
-  { num: "2", icon: "📄", title: "Upload CVs",     desc: "Drag & drop candidate resumes — PDF or DOCX",       to: "/resumes", cta: "Upload CVs" },
-  { num: "3", icon: "🏆", title: "View Rankings",  desc: "Instantly see ranked candidates with scores",        to: "/results", cta: "View Results" },
+  { num: "1", icon: "💼", title: "Post a Job", desc: "Define the role, required skills, and experience", to: "/jobs", cta: "Go to Jobs" },
+  { num: "2", icon: "📄", title: "Upload CVs", desc: "Drag & drop candidate resumes — PDF or DOCX", to: "/resumes", cta: "Upload CVs" },
+  { num: "3", icon: "🏆", title: "View Rankings", desc: "Instantly see ranked candidates with scores", to: "/results", cta: "View Results" },
 ];
 
 export default function Dashboard() {
-  const [health, setHealth]           = useState(null);
-  const [jobs, setJobs]               = useState([]);
-  const [evalData, setEvalData]       = useState(null);
+  const [health, setHealth] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [evalData, setEvalData] = useState(null);
   const [totalResumes, setTotalResumes] = useState(0);
 
   useEffect(() => {
@@ -25,14 +25,14 @@ export default function Dashboard() {
         const total = (data.jobs || []).reduce((s, j) => s + (j.matched_count || 0), 0);
         setTotalResumes(total);
       })
-      .catch(() => {});
+      .catch(() => { });
 
-    getEvaluationResults().then(setEvalData).catch(() => {});
+    getEvaluationResults().then(setEvalData).catch(() => { });
   }, []);
 
   const apiOk = health?.status === "running";
-  const dbOk  = health?.database === "connected";
-  const d1    = evalData?.dataset1;
+  const dbOk = health?.database === "connected";
+  const d1 = evalData?.dataset1;
   const bestModel = d1?.results
     ? Object.entries(d1.results).reduce((a, b) => a[1].f1_score > b[1].f1_score ? a : b)
     : null;
@@ -47,16 +47,16 @@ export default function Dashboard() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <StatusPill ok={apiOk} label="API" loading={!health} />
-          <StatusPill ok={dbOk}  label="DB"  loading={!health} />
+          <StatusPill ok={dbOk} label="DB" loading={!health} />
         </div>
       </div>
 
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
-        <KpiCard icon="💼" label="Open Jobs"          value={jobs.length}     accent="#4f46e5" />
-        <KpiCard icon="📄" label="CVs Processed"      value={totalResumes}    accent="#059669" />
-        <KpiCard icon="🏆" label="Best Model F1"      value={bestModel ? `${bestModel[1].f1_score}%` : "—"} accent="#7c3aed" />
-        <KpiCard icon="🤖" label="NLP + ML"           value="Active"          accent="#0891b2" />
+        <KpiCard icon="💼" label="Open Jobs" value={jobs.length} accent="#4f46e5" />
+        <KpiCard icon="📄" label="CVs Processed" value={totalResumes} accent="#059669" />
+        <KpiCard icon="🏆" label="Best Model F1" value={bestModel ? `${bestModel[1].f1_score}%` : "—"} accent="#7c3aed" />
+        <KpiCard icon="🤖" label="NLP + ML" value="Active" accent="#0891b2" />
       </div>
 
       {/* Workflow guide */}
@@ -112,7 +112,7 @@ export default function Dashboard() {
                     color: job.matched_count > 0 ? "#059669" : "#94a3b8",
                     fontWeight: 600,
                   }}>
-                    {job.matched_count || 0} matched
+                    {job.matched_count || 0} uploaded
                   </span>
                 </div>
               ))}
@@ -176,7 +176,7 @@ export default function Dashboard() {
         <div className="card-title">⚙️ System Architecture</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, fontSize: 13 }}>
           {[
-            { color: "#4f46e5", label: "Backend",  items: ["Python · Flask", "MongoDB · PyMongo", "PyMuPDF · python-docx"] },
+            { color: "#4f46e5", label: "Backend", items: ["Python · Flask", "MongoDB · PyMongo", "PyMuPDF · python-docx"] },
             { color: "#059669", label: "NLP / ML", items: ["spaCy NER", "BERT Sentence Transformers", "scikit-learn (SVM, RF, KNN, NB)"] },
             { color: "#0891b2", label: "Frontend", items: ["React + Vite", "React Router v7", "REST API integration"] },
           ].map(col => (
@@ -214,9 +214,9 @@ function KpiCard({ icon, label, value, accent }) {
 }
 
 function StatusPill({ ok, label, loading }) {
-  const bg    = loading ? "#f1f5f9" : ok ? "#d1fae5" : "#fee2e2";
+  const bg = loading ? "#f1f5f9" : ok ? "#d1fae5" : "#fee2e2";
   const color = loading ? "#94a3b8" : ok ? "#059669" : "#dc2626";
-  const dot   = loading ? "⏳" : ok ? "●" : "●";
+  const dot = loading ? "⏳" : ok ? "●" : "●";
   return (
     <span style={{ fontSize: 11, padding: "4px 10px", borderRadius: 20, background: bg, color, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
       {dot} {label}

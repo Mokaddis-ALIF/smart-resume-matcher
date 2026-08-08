@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { listJobs, createJob, updateJob, deleteJob, getSoftSkills, addSoftSkill, validateSkills } from "../services/api";
+import { listJobs, createJob, updateJob, deleteJob, deleteJobsBulk, getSoftSkills, addSoftSkill, validateSkills } from "../services/api";
+import BlockingLoader from "../components/BlockingLoader";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
   title: "",
@@ -17,6 +19,11 @@ export default function Jobs() {
   const [showForm, setShowForm] = useState(false);
   const [editingJobId, setEditingJobId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
   const [form, setForm] = useState({ ...emptyForm });
   const [softSkillOptions, setSoftSkillOptions] = useState([]);
   const [newSoftSkill, setNewSoftSkill] = useState("");
@@ -117,6 +124,8 @@ export default function Jobs() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving) return; // guard against double submit
+    setSaving(true);
     try {
       if (editingJobId) {
         await updateJob(editingJobId, buildJobData());
@@ -131,6 +140,8 @@ export default function Jobs() {
       fetchJobs();
     } catch (err) {
       alert("Failed to save job: " + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -156,14 +167,48 @@ export default function Jobs() {
     }
   };
 
-  const handleDelete = async (jobId) => {
-    if (!window.confirm("Delete this job and all its resumes and match results?")) return;
+  const confirmDeleteJob = async () => {
+    if (!jobToDelete) return;
+    setDeleting(true);
     try {
-      await deleteJob(jobId);
+      await deleteJob(jobToDelete._id);
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(jobToDelete._id); return n; });
+      setJobToDelete(null);
       fetchJobs();
     } catch (err) {
       alert("Failed to delete: " + err.message);
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const confirmBulkDeleteJobs = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      await deleteJobsBulk(Array.from(selectedIds));
+      setConfirmBulkDelete(false);
+      setSelectedIds(new Set());
+      fetchJobs();
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === jobs.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(jobs.map(j => j._id)));
   };
 
   const renderSkillTags = (validation) => {
@@ -192,6 +237,39 @@ export default function Jobs() {
 
   return (
     <div>
+      <BlockingLoader
+        show={saving}
+        title={editingJobId ? "Saving changes" : "Creating job"}
+        subtitle={editingJobId ? "Updating job and clearing old resumes & matches…" : "Validating skills and saving the posting…"}
+      />
+      <ConfirmDialog
+        open={!!jobToDelete}
+        busy={deleting}
+        title="Delete job posting?"
+        message={
+          <>
+            This will permanently delete <strong>{jobToDelete?.title}</strong> along with
+            all its uploaded resumes and match results. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete Job"
+        onConfirm={confirmDeleteJob}
+        onCancel={() => setJobToDelete(null)}
+      />
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        busy={deleting}
+        title="Delete selected jobs?"
+        message={
+          <>
+            This will permanently delete <strong>{selectedIds.size} job posting(s)</strong> along
+            with all their uploaded resumes and match results. This cannot be undone.
+          </>
+        }
+        confirmLabel={`Delete ${selectedIds.size}`}
+        onConfirm={confirmBulkDeleteJobs}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h2>Job Postings</h2>
@@ -210,15 +288,15 @@ export default function Jobs() {
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
               <label style={labelStyle}>Job Title *</label>
-              <input style={inputStyle} required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Senior Python Developer" />
+              <input style={inputStyle} required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="title" />
             </div>
             <div>
               <label style={labelStyle}>Job Description *</label>
-              <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the role, responsibilities, and what you're looking for..." />
+              <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} required value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="describe the role, responsibilities, and what you're looking for..." />
             </div>
             <div>
               <label style={labelStyle}>Required Technical Skills (comma separated) *</label>
-              <input style={inputStyle} required value={form.required_skills} onChange={e => setForm({ ...form, required_skills: e.target.value })} placeholder="e.g. Python, Flask, MongoDB, Docker" />
+              <input style={inputStyle} required value={form.required_skills} onChange={e => setForm({ ...form, required_skills: e.target.value })} placeholder="skills" />
               {renderSkillTags(reqValidation)}
               {unmatchedCount(reqValidation) > 0 && (
                 <div style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
@@ -228,7 +306,7 @@ export default function Jobs() {
             </div>
             <div>
               <label style={labelStyle}>Preferred Technical Skills (comma separated)</label>
-              <input style={inputStyle} value={form.preferred_skills} onChange={e => setForm({ ...form, preferred_skills: e.target.value })} placeholder="e.g. Kubernetes, AWS, Redis" />
+              <input style={inputStyle} value={form.preferred_skills} onChange={e => setForm({ ...form, preferred_skills: e.target.value })} placeholder="skills" />
               {renderSkillTags(prefValidation)}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
@@ -326,13 +404,14 @@ export default function Jobs() {
             </div> */}
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="btn btn-primary" type="submit">
-                {editingJobId ? "Save Changes" : "Create Job"}
+              <button className="btn btn-primary" type="submit" disabled={saving}>
+                {saving ? "Saving…" : editingJobId ? "Save Changes" : "Create Job"}
               </button>
               {editingJobId && (
-                <button type="button" onClick={closeForm} style={{
+                <button type="button" onClick={closeForm} disabled={saving} style={{
                   padding: "9px 18px", borderRadius: 8, fontSize: 14, fontWeight: 500,
-                  border: "1px solid #d1d5db", background: "#fff", color: "#374151", cursor: "pointer",
+                  border: "1px solid #d1d5db", background: "#fff", color: "#374151",
+                  cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1,
                 }}>
                   Cancel Edit
                 </button>
@@ -351,43 +430,72 @@ export default function Jobs() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {/* Selection toolbar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 4px" }}>
+            <label style={{ fontSize: 12.5, color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={selectedIds.size === jobs.length && jobs.length > 0}
+                onChange={toggleSelectAll}
+                style={{ accentColor: "#4f46e5", cursor: "pointer" }}
+              />
+              Select All
+            </label>
+            {selectedIds.size > 0 && (
+              <button
+                className="btn btn-danger"
+                style={{ fontSize: 12, padding: "5px 14px" }}
+                onClick={() => setConfirmBulkDelete(true)}
+              >
+                🗑 Delete {selectedIds.size} Selected
+              </button>
+            )}
+          </div>
           {jobs.map(job => (
-            <div key={job._id} className="card card-hover" style={{ borderLeft: "4px solid #4f46e5", padding: "16px 20px" }}>
+            <div key={job._id} className="card card-hover" style={{ borderLeft: `4px solid ${selectedIds.has(job._id) ? "#dc2626" : "#4f46e5"}`, padding: "16px 20px", background: selectedIds.has(job._id) ? "#fef2f2" : undefined }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                    {job.reference && (
-                      <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 5, background: "#f1f5f9", color: "#475569", fontWeight: 700, fontFamily: "monospace", border: "1px solid #e2e8f0" }}>
-                        {job.reference}
-                      </span>
-                    )}
-                    <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{job.title}</h3>
-                    {job.matched_count > 0 && (
-                      <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: "#d1fae5", color: "#059669", fontWeight: 600, border: "1px solid #6ee7b7" }}>
-                        {job.matched_count} matched
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {job.requirements?.required_skills?.map((skill, i) => (
-                      <span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#eef2ff", color: "#4338ca" }}>{skill}</span>
-                    ))}
-                    {job.requirements?.preferred_skills?.map((skill, i) => (
-                      <span key={`p${i}`} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#f0fdf4", color: "#059669" }}>{skill}</span>
-                    ))}
-                  </div>
-                  {job.soft_skills?.length > 0 && (
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
-                      {job.soft_skills.map((skill, i) => (
-                        <span key={i} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 12, background: "#f3f4f6", color: "#6b7280" }}>{skill}</span>
+                <div style={{ display: "flex", alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(job._id)}
+                    onChange={() => toggleSelect(job._id)}
+                    style={{ accentColor: "#4f46e5", cursor: "pointer", marginRight: 12, marginTop: 4, flexShrink: 0 }}
+                  />
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      {job.reference && (
+                        <span style={{ fontSize: 10.5, padding: "2px 8px", borderRadius: 5, background: "#f1f5f9", color: "#475569", fontWeight: 700, fontFamily: "monospace", border: "1px solid #e2e8f0" }}>
+                          {job.reference}
+                        </span>
+                      )}
+                      <h3 style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{job.title}</h3>
+                      {job.matched_count > 0 && (
+                        <span style={{ fontSize: 11, padding: "2px 9px", borderRadius: 20, background: "#d1fae5", color: "#059669", fontWeight: 600, border: "1px solid #6ee7b7" }}>
+                          {job.matched_count} matched
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {job.requirements?.required_skills?.map((skill, i) => (
+                        <span key={i} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#eef2ff", color: "#4338ca" }}>{skill}</span>
+                      ))}
+                      {job.requirements?.preferred_skills?.map((skill, i) => (
+                        <span key={`p${i}`} style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: "#f0fdf4", color: "#059669" }}>{skill}</span>
                       ))}
                     </div>
-                  )}
+                    {job.soft_skills?.length > 0 && (
+                      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 6 }}>
+                        {job.soft_skills.map((skill, i) => (
+                          <span key={i} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 12, background: "#f3f4f6", color: "#6b7280" }}>{skill}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
                   <a href={`/resumes?job=${job._id}`} className="btn btn-primary" style={{ textDecoration: "none", fontSize: 12.5 }}>📤 Upload CVs</a>
                   <button onClick={() => openEditForm(job)} className="btn btn-secondary" style={{ fontSize: 12.5 }}>✏️ Edit</button>
-                  <button className="btn btn-danger" style={{ fontSize: 12.5 }} onClick={() => handleDelete(job._id)}>Delete</button>
+                  <button className="btn btn-danger" style={{ fontSize: 12.5 }} onClick={() => setJobToDelete(job)}>Delete</button>
                 </div>
               </div>
             </div>

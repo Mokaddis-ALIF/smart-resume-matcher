@@ -162,8 +162,8 @@ def validate_skills():
 
 def _exact_lookup(skill_text):
     """Check exact taxonomy match only (no fuzzy)."""
-    from app.services.skill_taxonomy import _ALIAS_LOOKUP
-    return _ALIAS_LOOKUP.get(skill_text.lower().strip())
+    from app.services.skill_taxonomy import _alias_lookup
+    return _alias_lookup.get(skill_text.lower().strip())
 
 
 @jobs_bp.route("/api/jobs", methods=["GET"])
@@ -229,6 +229,7 @@ def update_job(job_id):
 
     resumes_deleted = db.resumes.delete_many({"job_id": job_id})
     results_deleted = db.match_results.delete_many({"job_id": job_id})
+    db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": {"matched_count": 0}})
 
     updated_job = db.jobs.find_one({"_id": ObjectId(job_id)})
     updated_job["_id"] = str(updated_job["_id"])
@@ -258,6 +259,39 @@ def delete_job(job_id):
     db.jobs.delete_one({"_id": ObjectId(job_id)})
 
     return jsonify({"message": "Job and all associated data deleted"})
+
+
+@jobs_bp.route("/api/jobs/delete/bulk", methods=["POST"])
+def delete_jobs_bulk():
+    """Delete multiple job postings and all their associated resumes,
+    match results, and uploaded files."""
+    data = request.get_json() or {}
+    job_ids = data.get("job_ids", [])
+
+    if not job_ids:
+        return jsonify({"error": "No job IDs provided"}), 400
+
+    deleted_count = 0
+    for job_id in job_ids:
+        try:
+            job = db.jobs.find_one({"_id": ObjectId(job_id)})
+        except Exception:
+            continue
+        if not job:
+            continue
+
+        # Remove uploaded resume files from disk before clearing the DB records
+        for resume in db.resumes.find({"job_id": job_id}):
+            file_path = resume.get("file_path", "")
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+
+        db.match_results.delete_many({"job_id": job_id})
+        db.resumes.delete_many({"job_id": job_id})
+        db.jobs.delete_one({"_id": ObjectId(job_id)})
+        deleted_count += 1
+
+    return jsonify({"message": f"{deleted_count} job(s) deleted", "deleted_count": deleted_count})
 
 
 @jobs_bp.route("/api/jobs/<job_id>/match", methods=["POST"])

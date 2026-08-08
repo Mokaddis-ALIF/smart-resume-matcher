@@ -10,10 +10,10 @@ import re
 # Section header patterns — simple keyword matching
 # The is_section_heading() gatekeeper ensures these only match actual headings
 SECTION_PATTERNS = {
-    "summary": r"(?i)\b(summary|profile|about\s*me|objective)\b",
+    "summary": r"(?i)\b(summary|profile|about(\s*me)?|objective)\b",
     # "experience": r"(?i)\b(experience|employment)\b",
-    "experience": r"(?i)\b(experience|employment|work\s*history)\b",
-    "education": r"(?i)\b(education|qualification|degree)\b",
+    "experience": r"(?i)\b(experience|employment|work\s*history|career\s*history)\b",
+    "education": r"(?i)\b(education|academic|qualification|degree)\b",
     "skills": r"(?i)\b(skills?|competenc|technologies|tech\s*stack)\b",
     "projects": r"(?i)\bprojects?\b",
     "achievements": r"(?i)\b(achievements?|accomplishments?)\b",
@@ -22,11 +22,31 @@ SECTION_PATTERNS = {
 }
 
 # Bullet characters — all Unicode variants used in CVs
-BULLETS = ("\u2022", "-", "*", "\u00b7", "\u2013", "\u25cf", "\u25cb")
+BULLETS = ("\u2022", "-", "*", "\u00b7", "\u2013", "\u25cf", "\u25cb", "\u25aa", "\u25ab")
 
 # Patterns for extracting contact information
 EMAIL_PATTERN = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"
 PHONE_PATTERN = r"(?:\+?\d{1,3}[-.\s]?)?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}"
+
+
+def _despace_heading(text):
+    """Collapse a letter-spaced heading back to normal text, or return None.
+
+    Some CV templates track out headings so the PDF extractor emits
+    "E X P E R I E N C E" instead of "EXPERIENCE", which matches none of the
+    SECTION_PATTERNS. Multi-word headings keep a wider gap between words
+    ("W O R K  H I S T O R Y"), so split on runs of 2+ spaces first and rejoin
+    the collapsed words with a single space. Every word must be 3+ single
+    characters for the line to count as letter-spaced.
+    """
+    words = re.split(r"\s{2,}", text.strip())
+    collapsed = []
+    for word in words:
+        tokens = word.split()
+        if len(tokens) < 3 or any(len(t) != 1 for t in tokens):
+            return None
+        collapsed.append("".join(tokens))
+    return " ".join(collapsed)
 
 
 def is_section_heading(line):
@@ -44,7 +64,18 @@ def is_section_heading(line):
         return None
     if cleaned.startswith(BULLETS):
         return None
+    # Collapse a letter-spaced heading before the checks below — the spacing
+    # roughly doubles the character count, which would trip the length gate.
+    despaced = _despace_heading(cleaned)
+    if despaced:
+        cleaned = despaced
     if len(cleaned) > 40:
+        return None
+    # A multi-word line ending in sentence punctuation is prose, not a heading
+    # (e.g. "...6 years of related experience." or "program language.") — this
+    # stops a sentence that merely contains a section keyword from being treated
+    # as a heading and consuming that section's slot.
+    if stripped.endswith((".", ",", ";")) and len(cleaned.split()) > 1:
         return None
     if ":" in cleaned and len(cleaned.split(":")[0]) > 3:
         if len(cleaned.split(":")[1].strip()) > 10:
@@ -145,19 +176,56 @@ def split_into_sections(text):
     return sections
 
 
+# A "dangling date" line: the whole line is just a start date followed by a
+# trailing connector (to / - / – / —) with nothing after it. Common in
+# two-column resume templates where the date sits in a narrow left column and
+# the PDF extractor emits "02/2020 to" and "Current" as separate lines.
+_DANGLING_DATE = re.compile(
+    r"^\s*("
+    r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*['’]?\d{2,4}"
+    r"|\d{2,4}[\s,]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*"
+    r"|\d{1,2}/\d{4}"
+    r"|\d{4}"
+    r")\s*(?:to|[-–—])\s*$",
+    re.IGNORECASE,
+)
+
+
+def _stitch_split_dates(text):
+    """Join a dangling-date line onto the following line so a full date range
+    lands on one line (e.g. '02/2020 to' + 'Current' -> '02/2020 to Current').
+    Leaves all other lines untouched."""
+    lines = text.split("\n")
+    out = []
+    i = 0
+    while i < len(lines):
+        if _DANGLING_DATE.match(lines[i].strip()):
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            if j < len(lines):
+                out.append(lines[i].rstrip() + " " + lines[j].strip())
+                i = j + 1
+                continue
+        out.append(lines[i])
+        i += 1
+    return "\n".join(out)
+
+
 def parse_experience(text):
     """Parse experience section into structured entries."""
     entries = []
     if not text:
         return entries
 
+    text = _stitch_split_dates(text)
     lines = text.split("\n")
     non_empty_lines = [line.strip() for line in lines if line.strip()]
 
     current_entry = None
     used_lines = set()
 
-    date_pattern = r"(?i)(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}|\d{2,4}[\s,]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*|\d{1,2}/\d{4}|\d{4})\s*[-\u2013\u2014to]+\s*(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}|\d{2,4}[\s,]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*|\d{1,2}/\d{4}|\d{4}|present|current)"
+    date_pattern = r"(?i)(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*['’]?\d{2,4}|\d{2,4}[\s,]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*|\d{1,2}/\d{4}|\d{4})\s*[-\u2013\u2014to]+\s*(\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*['’]?\d{2,4}|\d{2,4}[\s,]*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*|\d{1,2}/\d{4}|\d{4}|present|current)"
 
     def _looks_like_company(line):
         if not line or len(line) > 60:
@@ -286,6 +354,30 @@ def parse_experience(text):
     return entries
 
 
+def _normalise_year(token):
+    """Convert a year token to a 4-digit int. Handles apostrophe 2-digit years
+    (e.g. '14 -> 2014, '98 -> 1998) using a 2000s/1900s cutoff at 30."""
+    token = token.strip()
+    if token and token[0] in "'’":
+        yy = int(token[1:])
+        return 2000 + yy if yy <= 30 else 1900 + yy
+    return int(token)
+
+
+_MONTHS_RE = re.compile(r"(?i)\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\b")
+
+
+def _is_date_only_line(line, year_pattern):
+    """True if a line is essentially just a date/term range (years, month names,
+    and connector words) with no real institution text. Used to stop a date line
+    like "May '10 - May '14" from being mistaken for the school name."""
+    residual = re.sub(year_pattern, "", line)
+    residual = _MONTHS_RE.sub("", residual)
+    residual = re.sub(r"(?i)\b(?:to|present|current|till|now|since)\b", "", residual)
+    residual = re.sub(r"[^A-Za-z]", "", residual)
+    return len(residual) < 3
+
+
 def parse_education(text):
     """Parse education section into structured entries."""
     entries = []
@@ -295,8 +387,8 @@ def parse_education(text):
     lines = text.split("\n")
     current_entry = None
 
-    degree_pattern = r"(?i)\b(ph\.?d|doctorate|master|msc|m\.sc\.?|mba|bachelor|bsc|b\.sc\.?|ba|b\.a\.?|bs|b\.s\.?|b\.?tech|m\.?tech|b\.?eng?|m\.?eng?|diploma|associate|a\.?s|a\.?a|higher\s*secondary|secondary\s*school)\b"
-    year_pattern = r"\b(19|20)\d{2}\b"
+    degree_pattern = r"(?i)\b(ph\.?\s*d|doctorate|master|msc|m\.\s*sc\.?|mba|bachelor|bsc|b\.\s*sc\.?|ba|b\.\s*a\.?|bs|b\.\s*s\.?|b\.?\s*tech|m\.?\s*tech|b\.?\s*eng?|m\.?\s*eng?|diploma|associate|a\.?s|a\.?a|higher\s*secondary|secondary\s*school)\b"
+    year_pattern = r"\b(?:19|20)\d{2}\b|['’]\d{2}\b"
 
     for line in lines:
         stripped = line.strip()
@@ -315,17 +407,45 @@ def parse_education(text):
                 "degree": degree_match.group().strip(),
                 "field": None,
                 "institution": None,
-                "year": int(year_match.group()) if year_match else None,
+                "year": _normalise_year(year_match.group()) if year_match else None,
             }
 
             field_match = re.search(r"(?i)(?:in|of)\s+([A-Za-z\s&]+?)(?:\s*[,|\-\u2013\u2014(]|\s*$)", stripped)
             if field_match:
                 current_entry["field"] = field_match.group(1).strip()
+            else:
+                # Fallback: field stated directly after the degree with no in/of,
+                # e.g. "BSc (Hons) Computer Science" or "B.Tech Computer Science".
+                after = stripped[degree_match.end():]
+                after = re.sub(r"^\s*\([^)]*\)\s*", " ", after)  # drop a leading (Hons)/(Honours)
+                after = after.strip(" :,-\u2013\u2014|.")
+                m2 = re.match(r"([A-Z][A-Za-z&]+(?:\s+(?:and\s+|of\s+)?[A-Z][A-Za-z&]+){0,4})", after)
+                if m2:
+                    cand = m2.group(1).strip()
+                    _NON_FIELD = ("first", "second", "third", "class", "hons", "honours",
+                                  "honors", "distinction", "merit", "pass", "grade", "gpa",
+                                  "cgpa", "university", "college", "institute", "school", "with")
+                    _INST_MARKER = ("university", "college", "institute", "school", "center", "centre", "academy")
+                    words = [w.lower() for w in cand.split()]
+                    if (2 < len(cand) <= 40
+                            and words[0] not in _NON_FIELD
+                            and not any(w in _INST_MARKER for w in words)):
+                        current_entry["field"] = cand
 
-        elif current_entry and not current_entry["institution"]:
-            if not stripped.startswith(BULLETS) and len(stripped) > 3:
-                if not re.match(r"^[A-Z][a-z]+$", stripped) or len(stripped) > 15:
-                    current_entry["institution"] = stripped
+        elif current_entry:
+            # Fill the graduation year from a following date line if not already
+            # set (e.g. degree on one line, "May '10 - May '14" on the next).
+            # Take the last year on the line \u2014 the graduation/end year.
+            if current_entry["year"] is None and not stripped.startswith(BULLETS):
+                yrs = re.findall(year_pattern, stripped)
+                if yrs:
+                    current_entry["year"] = _normalise_year(yrs[-1])
+
+            if not current_entry["institution"]:
+                if not stripped.startswith(BULLETS) and len(stripped) > 3:
+                    if not re.match(r"^[A-Z][a-z]+$", stripped) or len(stripped) > 15:
+                        if not _is_date_only_line(stripped, year_pattern):
+                            current_entry["institution"] = stripped
 
     if current_entry:
         entries.append(current_entry)
@@ -359,7 +479,7 @@ def parse_skills(text):
             s = skill.strip()
             for b in BULLETS:
                 s = s.strip(b)
-            s = s.strip(" ")
+            s = s.strip(" \"'“”‘’")
             if s and 1 < len(s) < 40:
                 skills.append(s)
 
@@ -375,7 +495,12 @@ def parse_projects(text):
     lines = text.split("\n")
     current_entry = None
 
-    date_pattern = r"(?i)\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*\d{2,4}\s*[-\u2013\u2014]+\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{2,4}|present|current)"
+    date_pattern = r"(?i)\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*[\s,]*['’]?\d{2,4}\s*[-\u2013\u2014]+\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{2,4}|present|current)"
+
+    description_starters = ["developed", "built", "created", "implemented", "designed", "managed",
+                            "collaborated", "contributed", "worked", "applied", "gained", "used",
+                            "integrated", "maintained", "optimized", "ensured", "provided", "performed",
+                            "engineered", "a web", "a platform", "an app", "complete", "web-based"]
 
     def _is_tech_list(line):
         stripped = line.strip()
@@ -409,10 +534,6 @@ def parse_projects(text):
             if bullet_match:
                 return True
             return False
-        description_starters = ["developed", "built", "created", "implemented", "designed", "managed",
-                                "collaborated", "contributed", "worked", "applied", "gained", "used",
-                                "integrated", "maintained", "optimized", "ensured", "provided", "performed",
-                                "engineered", "a web", "a platform", "an app", "complete", "web-based"]
         if any(stripped.lower().startswith(v) for v in description_starters):
             return False
         if _is_tech_list(stripped):
@@ -429,12 +550,54 @@ def parse_projects(text):
         starts_upper = stripped[0].isupper() if stripped else False
         return starts_upper and (has_separator or is_short_nonsentence)
 
+    _title_tech_sep = re.compile(r"\s[\u2014\u2013\-|]\s")
+
+    def _split_title_techs(line):
+        """Handle 'Project Name \u2014 Tech, Tech, Tech' single-line titles.
+        Returns (title, [techs]) or (None, None). The part before the separator
+        must be a short title-like name; the part after must be a comma list."""
+        s = line.strip()
+        if not s or s.startswith(BULLETS):
+            return None, None
+        if any(s.lower().startswith(v) for v in description_starters):
+            return None, None
+        m = _title_tech_sep.search(s)
+        if not m:
+            return None, None
+        left = s[:m.start()].strip()
+        right = s[m.end():].strip()
+        # Left must be a short, name-like token (letters/digits/dots/hyphens,
+        # up to a few words) \u2014 not a comma list or a sentence. Package/product
+        # names may start lowercase (e.g. "gostream-batcher", "chdiff").
+        if not left or len(left) > 40 or "," in left:
+            return None, None
+        if not re.match(r"^[A-Za-z0-9][\w.\-]*(?: [A-Za-z0-9][\w.\-]*){0,3}$", left):
+            return None, None
+        techs = [t.strip().rstrip(".") for t in right.split(",") if t.strip()]
+        if not techs or any(len(t) > 30 for t in techs):
+            return None, None
+        # A single-tech title is only accepted when the name is one token
+        # (a package/product name); this avoids treating prose like
+        # "Backend service - handles X" as a project title.
+        if len(techs) < 2 and " " in left:
+            return None, None
+        return left, techs
+
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
 
         bullet_title_match = re.match(r"^[\u2022\-*\u00b7\u25cf]\s*(.+?):\s*(.+)", stripped)
+
+        # "Project Name \u2014 Tech, Tech, Tech" single-line title (checked before the
+        # tech-list branch, which would otherwise swallow the whole line).
+        tt_title, tt_techs = _split_title_techs(stripped)
+        if tt_title:
+            if current_entry:
+                entries.append(current_entry)
+            current_entry = {"title": tt_title, "technologies": tt_techs, "description": ""}
+            continue
 
         if _is_tech_list(stripped) and current_entry:
             current_entry["technologies"] = _extract_techs(stripped)
@@ -471,7 +634,7 @@ def parse_projects(text):
             continue
 
         if current_entry:
-            desc_line = re.sub(r"^[\u2022\-*\u00b7\u25cf\u2013\s]+", "", stripped)
+            desc_line = re.sub(r"^[\u2022\-*\u00b7\u25cf\u25aa\u25ab\u2013\s]+", "", stripped)
             if desc_line:
                 if current_entry["description"]:
                     current_entry["description"] += " " + desc_line

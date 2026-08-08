@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { listJobs, listResumes, uploadResumesBulk, deleteResume, deleteResumesBulk, getResume } from "../services/api";
+import BlockingLoader from "../components/BlockingLoader";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 export default function Resumes() {
   const [searchParams] = useSearchParams();
@@ -15,6 +17,9 @@ export default function Resumes() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
+  const [resumeToDelete, setResumeToDelete] = useState(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef();
 
   // Fetch jobs on mount
@@ -48,6 +53,7 @@ export default function Resumes() {
 
 
   const handleFiles = async (files) => {
+    if (uploading) return; // guard against re-entry while a batch is processing
     if (!selectedJobId) {
       alert("Please select a job first");
       return;
@@ -75,28 +81,36 @@ export default function Resumes() {
     handleFiles(e.dataTransfer.files);
   };
 
-  const handleDelete = async (resumeId) => {
-    if (!window.confirm("Delete this resume?")) return;
+  const confirmDeleteResume = async () => {
+    if (!resumeToDelete) return;
+    const resumeId = resumeToDelete._id;
+    setDeleting(true);
     try {
       await deleteResume(resumeId);
+      setResumeToDelete(null);
       setSelectedResume(null);
       setSelectedIds(prev => { const n = new Set(prev); n.delete(resumeId); return n; });
       fetchResumes();
     } catch (err) {
       alert("Failed to delete: " + err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const handleBulkDelete = async () => {
+  const confirmBulkDeleteResumes = async () => {
     if (selectedIds.size === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.size} selected resume(s)?`)) return;
+    setDeleting(true);
     try {
       await deleteResumesBulk(Array.from(selectedIds));
+      setConfirmBulkDelete(false);
       setSelectedIds(new Set());
       setSelectedResume(null);
       fetchResumes();
     } catch (err) {
       alert("Failed to delete: " + err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -138,6 +152,39 @@ export default function Resumes() {
 
   return (
     <div>
+      <BlockingLoader
+        show={uploading}
+        title="Uploading & parsing CVs"
+        subtitle={uploadProgress || "Extracting text and running NLP…"}
+      />
+      <ConfirmDialog
+        open={!!resumeToDelete}
+        busy={deleting}
+        title="Delete resume?"
+        message={
+          <>
+            This will permanently delete <strong>{resumeToDelete?.filename}</strong> and its
+            match results. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete Resume"
+        onConfirm={confirmDeleteResume}
+        onCancel={() => setResumeToDelete(null)}
+      />
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        busy={deleting}
+        title="Delete selected resumes?"
+        message={
+          <>
+            This will permanently delete <strong>{selectedIds.size} resume(s)</strong> and their
+            match results. This cannot be undone.
+          </>
+        }
+        confirmLabel={`Delete ${selectedIds.size}`}
+        onConfirm={confirmBulkDeleteResumes}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
       <div className="page-header">
         <h2>Resumes</h2>
         <p>Upload and manage candidate CVs for each job posting</p>
@@ -231,7 +278,7 @@ export default function Resumes() {
                       <button
                         className="btn btn-danger"
                         style={{ fontSize: 11, padding: "4px 12px" }}
-                        onClick={handleBulkDelete}
+                        onClick={() => setConfirmBulkDelete(true)}
                       >
                         Delete {selectedIds.size} Selected
                       </button>
@@ -299,7 +346,7 @@ export default function Resumes() {
                         <button
                           className="btn btn-danger"
                           style={{ fontSize: 11, padding: "4px 10px" }}
-                          onClick={e => { e.stopPropagation(); handleDelete(resume._id); }}
+                          onClick={e => { e.stopPropagation(); setResumeToDelete(resume); }}
                         >
                           ✕
                         </button>

@@ -121,6 +121,13 @@ def score_experience(resume_parsed, job_requirements):
 
 def _estimate_months(start_str, end_str):
     """Estimate duration in months from date strings like '01/2024' or '2024'."""
+    def _norm_yr(y):
+        # Expand apostrophe/2-digit years: '19 -> 2019, '98 -> 1998 (cutoff 30).
+        y = int(y)
+        if y < 100:
+            return 2000 + y if y <= 30 else 1900 + y
+        return y
+
     def parse_date(date_str):
         date_str = date_str.strip().lower()
         if date_str in ("present", "current"):
@@ -128,20 +135,23 @@ def _estimate_months(start_str, end_str):
             now = datetime.now()
             return now.year, now.month
 
-        # Try MM/YYYY format
-        match = re.match(r"(\d{1,2})/(\d{4})", date_str)
+        # Try MM/YYYY or MM/YY format
+        match = re.match(r"(\d{1,2})/['’]?(\d{2,4})", date_str)
         if match:
-            return int(match.group(2)), int(match.group(1))
+            return _norm_yr(match.group(2)), int(match.group(1))
 
-        # Try Month YYYY format
+        # Try "Month YYYY" or "Month 'YY" format
         month_map = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
                      "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12}
-        match = re.match(r"(\w{3})\w*\s*(\d{4})", date_str)
-        if match:
-            month = month_map.get(match.group(1).lower(), 1)
-            return int(match.group(2)), month
+        match = re.match(r"(\w{3})\w*\s*['’]?(\d{2,4})", date_str)
+        if match and match.group(1).lower() in month_map:
+            month = month_map[match.group(1).lower()]
+            return _norm_yr(match.group(2)), month
 
-        # Try YYYY only
+        # Try a 4-digit year, or an apostrophe 2-digit year ('19)
+        match = re.match(r"['’](\d{2})\b", date_str)
+        if match:
+            return _norm_yr(match.group(1)), 6  # Assume mid-year
         match = re.match(r"(\d{4})", date_str)
         if match:
             return int(match.group(1)), 6  # Assume mid-year
@@ -283,10 +293,13 @@ def score_projects(resume_parsed, resume_nlp_data, job_requirements):
 
     projects = resume_parsed.get("projects", [])
     if not projects:
-        return {"score": 30.0, "relevant_projects": [], "tech_overlap": []}
+        return {"score": 30.0, "all_projects": [], "relevant_projects": [], "tech_overlap": []}
 
     all_tech_overlap = set()
     relevant_projects = []
+    # Every project title, so the UI can show what the candidate actually built
+    # even when none of it overlaps this job's required skills.
+    all_projects = [proj.get("title") or "Untitled" for proj in projects]
 
     for proj in projects:
         proj_skills = set()
@@ -310,8 +323,15 @@ def score_projects(resume_parsed, resume_nlp_data, job_requirements):
         if len(relevant_projects) > 1:
             score = min(score + 10, 100.0)
 
+        # Having projects must never score WORSE than having none. The
+        # no-projects baseline above is 30, so a candidate whose projects simply
+        # don't overlap this job's stack was previously penalised down to 0 —
+        # scoring below someone with no projects at all. Floor it at the same 30.
+        score = max(score, 30.0)
+
     return {
         "score": round(score, 1),
+        "all_projects": all_projects,
         "relevant_projects": relevant_projects,
         "tech_overlap": sorted(list(all_tech_overlap)),
     }

@@ -29,6 +29,17 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def _refresh_matched_count(job_id):
+    """Recompute a job's matched_count from the current match_results after resume deletion."""
+    if not job_id:
+        return
+    count = db.match_results.count_documents({"job_id": job_id})
+    try:
+        db.jobs.update_one({"_id": ObjectId(job_id)}, {"$set": {"matched_count": count}})
+    except Exception:
+        pass
+
+
 def save_file(file):
     """Save uploaded file with a unique name. Returns (saved_filename, file_format, file_path)."""
     original = file.filename
@@ -262,6 +273,8 @@ def delete_resume(resume_id):
 
     db.resumes.delete_one({"_id": ObjectId(resume_id)})
 
+    _refresh_matched_count(resume.get("job_id"))
+
     return jsonify({"message": "Resume deleted"})
 
 
@@ -275,6 +288,7 @@ def delete_resumes_bulk():
         return jsonify({"error": "No resume IDs provided"}), 400
 
     deleted_count = 0
+    affected_job_ids = set()
     for resume_id in resume_ids:
         try:
             resume = db.resumes.find_one({"_id": ObjectId(resume_id)})
@@ -284,8 +298,13 @@ def delete_resumes_bulk():
                     os.remove(resume["file_path"])
                 db.resumes.delete_one({"_id": ObjectId(resume_id)})
                 deleted_count += 1
+                if resume.get("job_id"):
+                    affected_job_ids.add(resume["job_id"])
         except Exception:
             continue
+
+    for job_id in affected_job_ids:
+        _refresh_matched_count(job_id)
 
     return jsonify({"message": f"{deleted_count} resume(s) deleted", "deleted_count": deleted_count})
 

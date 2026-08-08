@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { listJobs, getResults, triggerMatching } from "../services/api";
+import BlockingLoader from "../components/BlockingLoader";
 
 export default function Results() {
   const [jobs, setJobs]                 = useState([]);
@@ -43,6 +44,11 @@ export default function Results() {
 
   return (
     <div>
+      <BlockingLoader
+        show={matching}
+        title="Scoring candidates"
+        subtitle={matchMessage || "Scoring all resumes against job requirements…"}
+      />
       <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h2>Match Results</h2>
@@ -381,11 +387,39 @@ function ScoreDimension({ dimKey, data }) {
       )}
 
       {dimKey === "projects" && (
-        <div style={{ fontSize: 12, color: "#475569" }}>
-          {data.relevant_projects?.length > 0
-            ? <span>Projects: <strong>{data.relevant_projects.join(", ")}</strong></span>
-            : <span style={{ color: "#94a3b8" }}>No directly relevant projects detected</span>
-          }
+        <div style={{ display: "flex", flexDirection: "column", gap: 5, fontSize: 12, color: "#475569" }}>
+          {/* Show every project the candidate built, highlighting the ones whose
+              tech overlaps this job. `all_projects` is absent on match results
+              stored before it was added — fall back to the old relevant-only view. */}
+          {data.all_projects?.length > 0 ? (
+            <>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: 10.5, color: "#94a3b8", flexShrink: 0 }}>Projects:</span>
+                {data.all_projects.map((p, i) => {
+                  const isRelevant = data.relevant_projects?.includes(p);
+                  return (
+                    <span key={i} title={isRelevant ? "Tech matches this job" : "No tech overlap with this job"}
+                      style={{
+                        fontSize: 10.5, padding: "2px 8px", borderRadius: 20, fontWeight: 600,
+                        background: isRelevant ? "#d1fae5" : "#f1f5f9",
+                        color:      isRelevant ? "#059669" : "#94a3b8",
+                      }}>
+                      {isRelevant && "✓ "}{p}
+                    </span>
+                  );
+                })}
+              </div>
+              {data.relevant_projects?.length === 0 && (
+                <span style={{ fontSize: 10.5, color: "#94a3b8" }}>
+                  None use this job's required tech
+                </span>
+              )}
+            </>
+          ) : (
+            data.relevant_projects?.length > 0
+              ? <span>Projects: <strong>{data.relevant_projects.join(", ")}</strong></span>
+              : <span style={{ color: "#94a3b8" }}>No projects detected</span>
+          )}
           {data.tech_overlap?.length > 0 && (
             <ChipRow label="Tech overlap" chips={data.tech_overlap} chipColor="#7c3aed" chipBg="#f5f3ff" />
           )}

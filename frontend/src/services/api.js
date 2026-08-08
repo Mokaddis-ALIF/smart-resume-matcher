@@ -56,6 +56,14 @@ export function deleteJob(jobId) {
   return request(`/jobs/${jobId}`, { method: "DELETE" });
 }
 
+export function deleteJobsBulk(jobIds) {
+  return request("/jobs/delete/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ job_ids: jobIds }),
+  });
+}
+
 export function getSoftSkills() {
   return request("/soft-skills");
 }

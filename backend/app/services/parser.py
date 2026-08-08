@@ -4,20 +4,75 @@ CV text extraction service.
 Extracts raw text from PDF, DOCX, and DOC files.
 """
 import os
+import re
 import fitz  # PyMuPDF
 from docx import Document
 
 
+# A block whose entire text is just a date range, e.g. "May 2022 – Present"
+# or "03/2019 - 08/2021". Used to spot right-aligned date columns (see _page_lines).
+_DATE_ONLY_BLOCK = re.compile(
+    r"^\s*(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?[\s,]*['’]?\d{2,4}"
+    r"|\d{1,2}/\d{4}|\d{4})"
+    r"\s*(?:to|[-–—])\s*"
+    r"(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?[\s,]*['’]?\d{2,4}"
+    r"|\d{1,2}/\d{4}|\d{4}|present|current)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _page_lines(page):
+    """Return a page's text lines in reading order.
+
+    PyMuPDF emits blocks in content-stream order, not visual order. Some CV
+    templates place employment dates in a right-aligned column that the writer
+    emitted first, so those dates surface at the very top of the page — far
+    from the experience section, which then parses as having no entries at all
+    because section_parser.parse_experience() needs a date to open an entry.
+
+    When a page's blocks already run top-to-bottom they are returned untouched.
+    Only when that order is broken do we lift out the date-only blocks and
+    reinsert each next to the block sharing its vertical band. This keeps
+    left-column date layouts (handled by section_parser._stitch_split_dates)
+    on their existing path.
+    """
+    blocks = [b for b in page.get_text("blocks") if b[6] == 0 and b[4].strip()]
+    tops = [b[1] for b in blocks]
+
+    if all(tops[i] <= tops[i + 1] + 2 for i in range(len(tops) - 1)):
+        return [b[4].rstrip("\n") for b in blocks]
+
+    floating = [i for i, b in enumerate(blocks) if _DATE_ONLY_BLOCK.match(b[4].strip())]
+    placed = set()
+    lines = []
+
+    for i, block in enumerate(blocks):
+        if i in floating:
+            continue
+        lines.append(block[4].rstrip("\n"))
+        for j in floating:
+            if j not in placed and abs(blocks[j][1] - block[1]) < 12:
+                lines.append(blocks[j][4].strip())
+                placed.add(j)
+
+    # A date block with no matching row is appended rather than dropped
+    lines.extend(blocks[j][4].strip() for j in floating if j not in placed)
+
+    return lines
+
+
 def extract_text_from_pdf(file_path):
     """Extract text from a PDF file using PyMuPDF."""
-    text = ""
+    lines = []
     try:
         doc = fitz.open(file_path)
         for page in doc:
-            text += page.get_text()
+            lines.extend(_page_lines(page))
         doc.close()
     except Exception as e:
         raise Exception(f"Failed to extract text from PDF: {str(e)}")
+
+    text = "\n".join(lines)
 
     # If no text was extracted, the PDF is likely image-based
     if len(text.strip()) < 50:
