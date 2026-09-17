@@ -61,6 +61,7 @@ The backend is a Flask API; MongoDB stores job postings, uploaded CVs, and match
   Replace the placeholders below with the actual numbers from your dissertation.
   Recruiters skim this — one line per metric, no essays.
 -->
+<!--
 
 On the dissertation benchmark dataset:
 
@@ -73,6 +74,7 @@ On the dissertation benchmark dataset:
 | **BERT + best model** |  `--`    |   `--`    |  `--`  |`--`|
 
 Full methodology, ablations, and error analysis in the dissertation write-up.
+-->
 
 ## Tech stack
 
